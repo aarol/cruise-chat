@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["MeshPeerModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.mesh_peer_module.MeshPeerModule"]
+  }
+}
