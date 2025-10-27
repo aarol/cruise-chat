@@ -1,15 +1,15 @@
-import { registerWebModule, NativeModule } from 'expo';
+import { NativeModule, registerWebModule } from 'expo';
 
 import { ChangeEventPayload } from './MeshPeerModule.types';
 
 type MeshPeerModuleEvents = {
-  onChange: (params: ChangeEventPayload) => void;
+  onMessageReceive: (params: ChangeEventPayload) => void;
 }
 
 class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   PI = Math.PI;
   async setValueAsync(value: string): Promise<void> {
-    this.emit('onChange', { value });
+    this.emit('onMessageReceive', { value });
   }
   hello() {
     return 'Hello world! 👋';

@@ -2,6 +2,7 @@ import { NativeModule, requireNativeModule } from 'expo';
 
 import { MeshPeerModuleEvents } from './MeshPeerModule.types';
 
+// These are native functions we can call from React
 declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   PI: number;
   hello(): string;

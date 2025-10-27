@@ -5,7 +5,7 @@ export type OnLoadEventPayload = {
 };
 
 export type MeshPeerModuleEvents = {
-  onChange: (params: ChangeEventPayload) => void;
+  onMessageReceive: (params: ChangeEventPayload) => void;
 };
 
 export type ChangeEventPayload = {

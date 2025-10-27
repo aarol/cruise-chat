@@ -16,7 +16,7 @@ public class MeshPeerModule: Module {
     }
 
     // Defines event names that the module can send to JavaScript.
-    Events("onChange")
+    Events("onMessageReceive")
 
     // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
     Function("hello") {
@@ -27,7 +27,7 @@ public class MeshPeerModule: Module {
     // is by default dispatched on the different thread than the JavaScript runtime runs on.
     AsyncFunction("setValueAsync") { (value: String) in
       // Send an event to JavaScript.
-      self.sendEvent("onChange", [
+      self.sendEvent("onMessageReceive", [
         "value": value
       ])
     }
