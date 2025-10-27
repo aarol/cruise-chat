@@ -21,7 +21,7 @@ export default function TabOneScreen() {
   const [isAdvertising, setIsAdvertising] = useState(false)
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [permissionsRequested, setPermissionsRequested] = useState(false)
-  
+
   // ScrollView ref and auto-scroll state
   const scrollViewRef = useRef<ScrollView>(null)
   const [isAtBottom, setIsAtBottom] = useState(true)
@@ -41,6 +41,13 @@ export default function TabOneScreen() {
 
   // Many of these listeners are unnecessary and shouldn't broadcast to frontend
   useEffect(() => {
+
+    // Start the service
+    MeshPeerModule.startNearbyService().then(() => console.log('ok')).catch((err) => {
+      console.error('Failed to start service:', err);
+    }
+    );
+
     // Legacy message listener
     const messageSubscription = MeshPeerModule.addListener('onMessageReceive', (eventData) => {
       console.log('Legacy message received:', eventData.value);
@@ -107,18 +114,18 @@ export default function TabOneScreen() {
     }
   }, [messages, isAtBottom])
 
-const requestPermissions = async () => {
-  try {
-    await MeshPeerModule.requestPermissions()
-    setPermissionsRequested(true);
-    return true;
-  } catch (error) {
-    console.error('Permission request failed:', error);
-    setMessages(messages => [...messages, `❌ Permission error: ${error}`]);
-    setPermissionsRequested(true); // Still show buttons even if permissions failed
-    return false;
-  }
-};
+  const requestPermissions = async () => {
+    try {
+      await MeshPeerModule.requestPermissions()
+      setPermissionsRequested(true);
+      return true;
+    } catch (error) {
+      console.error('Permission request failed:', error);
+      setMessages(messages => [...messages, `❌ Permission error: ${error}`]);
+      setPermissionsRequested(true); // Still show buttons even if permissions failed
+      return false;
+    }
+  };
 
   const startNearbyConnections = async () => {
     try {
@@ -206,14 +213,14 @@ const requestPermissions = async () => {
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 100}
     >
       <View style={styles.inner}>
         {/* Messages list */}
-        <ScrollView 
+        <ScrollView
           ref={scrollViewRef}
           style={styles.messagesContainer}
           contentContainerStyle={styles.messagesContent}
@@ -229,64 +236,64 @@ const requestPermissions = async () => {
             </Text>
           ))}
         </ScrollView>
-          
-          {/* Control buttons */}
-          <View style={styles.controlsContainer}>
-            {!permissionsRequested ? (
-              <TouchableOpacity 
-                style={styles.permissionButton} 
-                onPress={requestPermissions}
-              >
-                <Text style={styles.permissionButtonText}>
-                  🔐 Request Permissions
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <>
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity 
-                    style={[styles.debugButton, isAdvertising && styles.activeButton]} 
-                    onPress={isAdvertising ? stopAdvertising : startAdvertising}
-                  >
-                    <Text style={styles.debugButtonText}>
-                      {isAdvertising ? '📡 Stop' : '📡 Broadcast'}
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={[styles.debugButton, isDiscovering && styles.activeButton]} 
-                    onPress={isDiscovering ? stopDiscovery : startDiscovery}
-                  >
-                    <Text style={styles.debugButtonText}>
-                      {isDiscovering ? '🔍 Stop' : '🔍 Discover'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.statusText}>
-                  Connected: {connectedPeers.length} • {isAdvertising ? 'Broadcasting' : isDiscovering ? 'Discovering' : 'Idle'}
-                </Text>
-              </>
-            )}
-          </View>
-          
-          {/* Input area */}
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Type a message..."
-              placeholderTextColor="#888"
-              multiline={false}
-              onSubmitEditing={sendMessage}
-              returnKeyType="send"
-              blurOnSubmit={true}
-            />
-            <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-              <Text style={styles.sendButtonText}>Send</Text>
+
+        {/* Control buttons */}
+        <View style={styles.controlsContainer}>
+          {!permissionsRequested ? (
+            <TouchableOpacity
+              style={styles.permissionButton}
+              onPress={requestPermissions}
+            >
+              <Text style={styles.permissionButtonText}>
+                🔐 Request Permissions
+              </Text>
             </TouchableOpacity>
-          </View>
+          ) : (
+            <>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={[styles.debugButton, isAdvertising && styles.activeButton]}
+                  onPress={isAdvertising ? stopAdvertising : startAdvertising}
+                >
+                  <Text style={styles.debugButtonText}>
+                    {isAdvertising ? '📡 Stop' : '📡 Broadcast'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.debugButton, isDiscovering && styles.activeButton]}
+                  onPress={isDiscovering ? stopDiscovery : startDiscovery}
+                >
+                  <Text style={styles.debugButtonText}>
+                    {isDiscovering ? '🔍 Stop' : '🔍 Discover'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.statusText}>
+                Connected: {connectedPeers.length} • {isAdvertising ? 'Broadcasting' : isDiscovering ? 'Discovering' : 'Idle'}
+              </Text>
+            </>
+          )}
         </View>
+
+        {/* Input area */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.textInput}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Type a message..."
+            placeholderTextColor="#888"
+            multiline={false}
+            onSubmitEditing={sendMessage}
+            returnKeyType="send"
+            blurOnSubmit={true}
+          />
+          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+            <Text style={styles.sendButtonText}>Send</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </KeyboardAvoidingView>
   );
 }

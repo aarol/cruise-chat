@@ -2,7 +2,9 @@ package expo.modules.mesh_peer_module
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.nearby.Nearby
@@ -73,25 +75,34 @@ class MeshPeerModule : Module() {
 
   private val requiredPermissions: List<String>
     get() {
-      return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-        // Android 12+ (API 31+)
-        listOf(
-          Manifest.permission.ACCESS_FINE_LOCATION,
-          Manifest.permission.BLUETOOTH_ADVERTISE,
-          Manifest.permission.BLUETOOTH_CONNECT,
-          Manifest.permission.BLUETOOTH_SCAN,
-          Manifest.permission.NEARBY_WIFI_DEVICES
-        )
+      val basePermissions = mutableListOf<String>()
+      
+      // Location permission (required for all versions)
+      basePermissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
+      
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+      // Android 12+ (API 31+)
+      basePermissions.addAll(listOf(
+        Manifest.permission.BLUETOOTH_ADVERTISE,
+        Manifest.permission.BLUETOOTH_CONNECT,
+        Manifest.permission.BLUETOOTH_SCAN,
+        Manifest.permission.NEARBY_WIFI_DEVICES
+      ))
       } else {
-        // Android 11 and below
-        listOf(
-          Manifest.permission.ACCESS_FINE_LOCATION,
-          Manifest.permission.BLUETOOTH,
-          Manifest.permission.BLUETOOTH_ADMIN
-        )
+      // Android 11 and below
+      basePermissions.addAll(listOf(
+        Manifest.permission.BLUETOOTH,
+        Manifest.permission.BLUETOOTH_ADMIN
+      ))
       }
+      
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+      // Android 13+ (API 33+)
+      basePermissions.add(Manifest.permission.POST_NOTIFICATIONS)
+      }
+      
+      return basePermissions
     }
-  
   // Helper function for debug logging
   private fun DebugLog(message: String) {
     sendEvent("onDebug", mapOf("message" to message))
@@ -360,6 +371,36 @@ class MeshPeerModule : Module() {
       connectionsClient.stopAllEndpoints()
       connectedEndpoints.clear()
       promise.resolve(null)
+    }
+
+    AsyncFunction("startNearbyService") { promise: Promise ->
+      try {
+        Log.d("MeshPeerModule", "startNearbyService called")
+        val context = appContext.reactContext!!
+        Log.d("MeshPeerModule", "Got context: $context")
+        
+        val intent = Intent(context, NearbyService::class.java)
+        Log.d("MeshPeerModule", "Created intent for NearbyService")
+        
+        val result = context.startForegroundService(intent)
+        Log.d("MeshPeerModule", "startForegroundService returned: $result")
+        
+        promise.resolve("Service started successfully")
+      } catch (e: Exception) {
+        Log.e("MeshPeerModule", "Failed to start service: ${e.message}", e)
+        promise.reject("SERVICE_START_FAILED", "Failed to start Nearby service: ${e.message}", e)
+      }
+    }
+
+    AsyncFunction("stopNearbyService") { promise: Promise ->
+      try {
+        val context = appContext.reactContext!!
+        val intent = Intent(context, NearbyService::class.java)
+        context.stopService(intent)
+        promise.resolve("Service stopped successfully")
+      } catch (e: Exception) {
+        promise.reject("SERVICE_STOP_FAILED", "Failed to stop Nearby service: ${e.message}", e)
+      }
     }
 
     AsyncFunction("getAllMessageIds") { promise: Promise ->
