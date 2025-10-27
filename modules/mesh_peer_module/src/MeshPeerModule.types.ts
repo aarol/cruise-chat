@@ -4,12 +4,48 @@ export type OnLoadEventPayload = {
   url: string;
 };
 
-export type MeshPeerModuleEvents = {
-  onMessageReceive: (params: ChangeEventPayload) => void;
+export type PeerInfo = {
+  endpointId: string;
+  name: string;
+};
+
+export type MessageReceivedPayload = {
+  endpointId: string;
+  message: string;
+};
+
+export type PeerConnectedPayload = {
+  endpointId: string;
+};
+
+export type PeerDisconnectedPayload = {
+  endpointId: string;
+};
+
+export type ConnectionFailedPayload = {
+  endpointId: string;
+  error: string;
 };
 
 export type ChangeEventPayload = {
   value: string;
+};
+
+export type MeshPeerModuleEvents = {
+  // Legacy event for backward compatibility
+  onMessageReceive: (params: ChangeEventPayload) => void;
+  
+  // New Nearby Connections events
+  onPeerDiscovered: (params: PeerInfo) => void;
+  onPeerConnected: (params: PeerConnectedPayload) => void;
+  onPeerDisconnected: (params: PeerDisconnectedPayload) => void;
+  onPeerLost: (params: PeerDisconnectedPayload) => void;
+  onMessageReceived: (params: MessageReceivedPayload) => void;
+  onConnectionFailed: (params: ConnectionFailedPayload) => void;
+  onAdvertisingStarted: () => void;
+  onDiscoveryStarted: () => void;
+  onDebug: (params: { message: string }) => void;
+  onError: (params: { error: string }) => void;
 };
 
 export type MeshPeerModuleViewProps = {
