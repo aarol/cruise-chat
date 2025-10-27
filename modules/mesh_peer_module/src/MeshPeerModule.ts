@@ -2,14 +2,10 @@ import { NativeModule, requireNativeModule } from 'expo';
 
 import { MeshPeerModuleEvents } from './MeshPeerModule.types';
 
-// These are native functions we can call from React
+// These are native functions we can call from React code
 declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
-  // Legacy properties and functions
   PI: number;
-  hello(): string;
-  setValueAsync(value: string): Promise<void>;
   
-  // Permission functions
   requestPermissions(): Promise<{granted: boolean; permissions?: string[]}>;
   checkPermissions(): Promise<{granted: boolean}>;
   
@@ -18,7 +14,6 @@ declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   startDiscovery(): Promise<void>;
   stopAdvertising(): Promise<void>;
   stopDiscovery(): Promise<void>;
-  sendMessage(endpointId: string, message: string): Promise<void>;
   broadcastMessage(message: string): Promise<void>;
   getConnectedPeers(): Promise<string[]>;
   disconnectFromPeer(endpointId: string): Promise<void>;

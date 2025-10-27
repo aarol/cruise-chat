@@ -50,7 +50,6 @@ class MeshPeerModule : Module() {
         )
       }
     }
-
   
   // Helper function for debug logging
   private fun DebugLog(message: String) {
@@ -172,7 +171,6 @@ class MeshPeerModule : Module() {
       connectionsClient = Nearby.getConnectionsClient(ctx)
     }
 
-
     // Define events that can be sent to JavaScript
     Events(
       "onPeerDiscovered",
@@ -185,22 +183,7 @@ class MeshPeerModule : Module() {
       "onDiscoveryStarted",
       "onError",
       "onDebug",
-      "onMessageReceive" // Keep for backward compatibility
     )
-
-    // Legacy functions for compatibility
-    Function("hello") {
-      "CruiseChat with Nearby Connections! 🚢"
-    }
-
-    AsyncFunction("setValueAsync") { value: String ->
-      // Broadcast message to all connected endpoints
-      val payload = Payload.fromBytes(value.toByteArray(StandardCharsets.UTF_8))
-      for (endpointId in connectedEndpoints) {
-        connectionsClient.sendPayload(endpointId, payload)
-      }
-      sendEvent("onMessageReceive", mapOf("value" to value))
-    }
 
     AsyncFunction("checkPermissions") { promise: Promise ->
       val context = appContext.reactContext ?: run {
@@ -214,7 +197,6 @@ class MeshPeerModule : Module() {
     }
 
     AsyncFunction("requestPermissions") { promise: Promise ->
-      DebugLog("Requesting permissions on Kotlin side")
       DebugLog("Using permissions for API ${android.os.Build.VERSION.SDK_INT}: $requiredPermissions")
 
       val activity = appContext.currentActivity ?: run {
@@ -276,6 +258,7 @@ class MeshPeerModule : Module() {
         endpointDiscoveryCallback,
         discoveryOptions
       ).addOnSuccessListener {
+        DebugLog("Started discovering!")
         sendEvent("onDiscoveryStarted", emptyMap<String, Any>())
         promise.resolve(null)
       }.addOnFailureListener { exception ->

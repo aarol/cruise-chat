@@ -1,18 +1,16 @@
 import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
 import
   {
-    Keyboard,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
     StyleSheet,
     TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback
+    TouchableOpacity
   } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function TabOneScreen() {
 
@@ -23,6 +21,23 @@ export default function TabOneScreen() {
   const [isAdvertising, setIsAdvertising] = useState(false)
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [permissionsRequested, setPermissionsRequested] = useState(false)
+  
+  // ScrollView ref and auto-scroll state
+  const scrollViewRef = useRef<ScrollView>(null)
+  const [isAtBottom, setIsAtBottom] = useState(true)
+
+  // Function to check if user is at bottom of scroll
+  const handleScroll = (event: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent
+    const paddingToBottom = 20
+    const isBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom
+    setIsAtBottom(isBottom)
+  }
+
+  // Function to scroll to bottom
+  const scrollToBottom = () => {
+    scrollViewRef.current?.scrollToEnd({ animated: true })
+  }
 
   // Many of these listeners are unnecessary and shouldn't broadcast to frontend
   useEffect(() => {
@@ -34,8 +49,7 @@ export default function TabOneScreen() {
 
     // New Nearby Connections listeners
     const peerDiscoveredSubscription = MeshPeerModule.addListener('onPeerDiscovered', (peerInfo) => {
-      console.log('Peer discovered:', peerInfo);
-      setMessages(messages => [...messages, `📡 Found: ${peerInfo.name}`]);
+      // console.log('Peer discovered:', peerInfo);
     });
 
     const peerConnectedSubscription = MeshPeerModule.addListener('onPeerConnected', (data) => {
@@ -48,7 +62,6 @@ export default function TabOneScreen() {
     const peerDisconnectedSubscription = MeshPeerModule.addListener('onPeerDisconnected', (data) => {
       console.log('Peer disconnected:', data.endpointId);
       setMessages(messages => [...messages, `❌ Peer disconnected`]);
-      // Refresh connected peers list
       MeshPeerModule.getConnectedPeers().then(setConnectedPeers);
     });
 
@@ -58,18 +71,16 @@ export default function TabOneScreen() {
     });
 
     const advertisingStartedSubscription = MeshPeerModule.addListener('onAdvertisingStarted', () => {
-      console.log('Started advertising');
       setIsAdvertising(true);
     });
 
     const discoveryStartedSubscription = MeshPeerModule.addListener('onDiscoveryStarted', () => {
-      console.log('Started discovery');
       setIsDiscovering(true);
     });
 
     const debugMessagesSubscription = MeshPeerModule.addListener('onDebug', (data) => {
       console.log('Native debug:', data.message);
-      setMessages(messages => [...messages, data.message]);
+      // setMessages(messages => [...messages, data.message]);
     });
 
     return () => {
@@ -84,11 +95,17 @@ export default function TabOneScreen() {
     };
   }, [])
 
+  // Auto-scroll to bottom when new messages arrive (if user was already at bottom)
+  useEffect(() => {
+    if (isAtBottom && messages.length > 0) {
+      setTimeout(() => { scrollToBottom() }, 5)
+    }
+  }, [messages, isAtBottom])
+
 const requestPermissions = async () => {
   try {
     await MeshPeerModule.requestPermissions()
     setPermissionsRequested(true);
-    setMessages(messages => [...messages, `🔐 Permissions requested`]);
     return true;
   } catch (error) {
     console.error('Permission request failed:', error);
@@ -168,15 +185,11 @@ const requestPermissions = async () => {
   const sendMessage = async () => {
     if (inputText.trim()) {
       try {
-        if (connectedPeers.length > 0) {
-          // Send to all connected peers using new API
-          await MeshPeerModule.broadcastMessage(inputText);
-          setMessages(messages => [...messages, `You: ${inputText}`]);
-        } else {
-          // Fallback to legacy method
-          await MeshPeerModule.setValueAsync(inputText);
-        }
+        await MeshPeerModule.broadcastMessage(inputText);
+        setMessages(messages => [...messages, `You: ${inputText}`]);
         setInputText('');
+        // Always scroll to bottom when user sends a message
+        setTimeout(() => { scrollToBottom() }, 5)
       } catch (error) {
         console.error('Failed to send message:', error);
         setMessages(messages => [...messages, `❌ Failed to send message`]);
@@ -190,22 +203,24 @@ const requestPermissions = async () => {
       style={styles.container}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 100}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.inner}>
-          <Text style={styles.title}>Global chat</Text>
-          
-          {/* Messages list */}
-          <ScrollView 
-            style={styles.messagesContainer}
-            contentContainerStyle={styles.messagesContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {messages.map((message, index) => (
-              <Text key={index} style={styles.messageText}>
-                {message}
-              </Text>
-            ))}
-          </ScrollView>
+      <View style={styles.inner}>
+        {/* Messages list */}
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.messagesContent}
+          showsVerticalScrollIndicator={true}
+          keyboardShouldPersistTaps="handled"
+          scrollEnabled={true}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
+          {messages.map((message, index) => (
+            <Text key={index} style={styles.messageText}>
+              {message}
+            </Text>
+          ))}
+        </ScrollView>
           
           {/* Control buttons */}
           <View style={styles.controlsContainer}>
@@ -257,13 +272,13 @@ const requestPermissions = async () => {
               multiline={false}
               onSubmitEditing={sendMessage}
               returnKeyType="send"
+              blurOnSubmit={true}
             />
             <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
               <Text style={styles.sendButtonText}>Send</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
@@ -274,7 +289,6 @@ const styles = StyleSheet.create({
   },
   inner: {
     flex: 1,
-    justifyContent: 'space-between',
   },
   title: {
     fontSize: 20,
@@ -292,10 +306,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     marginBottom: 10,
+    minHeight: 100,
   },
   messagesContent: {
     flexGrow: 1,
     justifyContent: 'flex-end',
+    paddingVertical: 10,
   },
   messageText: {
     color: 'black',

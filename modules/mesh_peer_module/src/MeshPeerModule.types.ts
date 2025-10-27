@@ -31,6 +31,7 @@ export type ChangeEventPayload = {
   value: string;
 };
 
+// These are the react functions we can call from native code
 export type MeshPeerModuleEvents = {
   // Legacy event for backward compatibility
   onMessageReceive: (params: ChangeEventPayload) => void;

@@ -8,12 +8,9 @@ type MeshPeerModuleEvents = {
 
 class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   PI = Math.PI;
-  async setValueAsync(value: string): Promise<void> {
-    this.emit('onMessageReceive', { value });
-  }
-  hello() {
-    return 'Hello world! 👋';
-  }
+  // hello() {
+  //   return 'Hello world! 👋';
+  // }
 };
 
 export default registerWebModule(MeshPeerModule, 'MeshPeerModule');
