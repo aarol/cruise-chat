@@ -18,6 +18,9 @@ declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   getConnectedPeers(): Promise<string[]>;
   disconnectFromPeer(endpointId: string): Promise<void>;
   disconnectFromAllPeers(): Promise<void>;
+  
+  // Database functions
+  getAllMessageIds(): Promise<string[]>;
 }
 
 // This call loads the native module object from the JSI.

@@ -19,12 +19,53 @@ import android.net.wifi.WifiManager
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.ConnectionResult
 
+// SQLite imports
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteException
+import java.io.File
+
 class MeshPeerModule : Module() {
   private lateinit var connectionsClient: ConnectionsClient
   private val connectedEndpoints = mutableSetOf<String>()
   
   // Strategy for connections - CLUSTER allows many-to-many connections
   private val strategy = Strategy.P2P_CLUSTER
+
+  // SQLite database helper methods
+  private fun getDatabasePath(): String {
+    val context = appContext.reactContext!!
+    return File(context.filesDir, "SQLite/cruise-chat.db").absolutePath
+  }
+
+  private fun getAllMessageIds(): List<String> {
+    val messageIds = mutableListOf<String>()
+    
+    try {
+      val dbPath = getDatabasePath()
+      val database = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READONLY)
+      
+      val cursor = database.rawQuery("SELECT id FROM messages ORDER BY created_at DESC", null)
+      
+      if (cursor.moveToFirst()) {
+        do {
+          val messageId = cursor.getString(cursor.getColumnIndexOrThrow("id"))
+          messageIds.add(messageId)
+        } while (cursor.moveToNext())
+      }
+      
+      cursor.close()
+      database.close()
+      
+      DebugLog("Retrieved ${messageIds.size} message IDs from database")
+      
+    } catch (e: SQLiteException) {
+      DebugLog("SQLite error: ${e.message}")
+    } catch (e: Exception) {
+      DebugLog("Database error: ${e.message}")
+    }
+    
+    return messageIds
+  }
 
   companion object {
     private const val REQUEST_CODE_PERMISSIONS = 1234
@@ -319,6 +360,15 @@ class MeshPeerModule : Module() {
       connectionsClient.stopAllEndpoints()
       connectedEndpoints.clear()
       promise.resolve(null)
+    }
+
+    AsyncFunction("getAllMessageIds") { promise: Promise ->
+      try {
+        val messageIds = getAllMessageIds()
+        promise.resolve(messageIds)
+      } catch (e: Exception) {
+        promise.reject("DATABASE_ERROR", "Failed to get message IDs: ${e.message}", e)
+      }
     }
 
     // Keep the view functionality for compatibility

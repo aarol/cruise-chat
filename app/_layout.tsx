@@ -11,6 +11,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import db from '@/database';
 import migrations from '@/drizzle/migrations';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
+import "react-native-get-random-values";
 
 export {
   // Catch any errors thrown by the Layout component.

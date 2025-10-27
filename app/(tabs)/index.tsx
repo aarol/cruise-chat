@@ -1,15 +1,15 @@
 import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
-import
-  {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity
-  } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity
+} from 'react-native';
 
 import { Text, View } from '@/components/Themed';
+import { addTextMessageToDb } from '@/database/services';
 import { useEffect, useRef, useState } from 'react';
 
 export default function TabOneScreen() {
@@ -188,6 +188,9 @@ const requestPermissions = async () => {
   };
 
   const sendMessage = async () => {
+
+    await addTextMessageToDb(inputText.trim(), 'local-user');
+
     if (inputText.trim()) {
       try {
         await MeshPeerModule.broadcastMessage(inputText);
