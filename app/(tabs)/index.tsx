@@ -82,6 +82,10 @@ export default function TabOneScreen() {
       console.log('Native debug:', data.message);
       // setMessages(messages => [...messages, data.message]);
     });
+    const errorMessagesSubscription = MeshPeerModule.addListener('onError', (data) => {
+      console.log('Error:', data.error);
+      setMessages(messages => [...messages, "Error: " + data.error]);
+    });
 
     return () => {
       messageSubscription?.remove();
@@ -92,6 +96,7 @@ export default function TabOneScreen() {
       advertisingStartedSubscription?.remove();
       discoveryStartedSubscription?.remove();
       debugMessagesSubscription?.remove();
+      errorMessagesSubscription?.remove();
     };
   }, [])
 
