@@ -30,13 +30,27 @@ class MeshPeerModule : Module() {
     private const val REQUEST_CODE_PERMISSIONS = 1234
   }
 
-  private val requiredPermissions = listOf(
-    Manifest.permission.ACCESS_FINE_LOCATION,
-    Manifest.permission.BLUETOOTH_ADVERTISE,
-    Manifest.permission.BLUETOOTH_CONNECT,
-    Manifest.permission.BLUETOOTH_SCAN,
-    Manifest.permission.NEARBY_WIFI_DEVICES
-  )
+  private val requiredPermissions: List<String>
+    get() {
+      return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        // Android 12+ (API 31+)
+        listOf(
+          Manifest.permission.ACCESS_FINE_LOCATION,
+          Manifest.permission.BLUETOOTH_ADVERTISE,
+          Manifest.permission.BLUETOOTH_CONNECT,
+          Manifest.permission.BLUETOOTH_SCAN,
+          Manifest.permission.NEARBY_WIFI_DEVICES
+        )
+      } else {
+        // Android 11 and below
+        listOf(
+          Manifest.permission.ACCESS_FINE_LOCATION,
+          Manifest.permission.BLUETOOTH,
+          Manifest.permission.BLUETOOTH_ADMIN
+        )
+      }
+    }
+
   
   // Helper function for debug logging
   private fun DebugLog(message: String) {
@@ -201,6 +215,7 @@ class MeshPeerModule : Module() {
 
     AsyncFunction("requestPermissions") { promise: Promise ->
       DebugLog("Requesting permissions on Kotlin side")
+      DebugLog("Using permissions for API ${android.os.Build.VERSION.SDK_INT}: $requiredPermissions")
 
       val activity = appContext.currentActivity ?: run {
         promise.reject("NO_ACTIVITY", "Activity not available", null)
