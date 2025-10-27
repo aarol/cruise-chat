@@ -3,6 +3,7 @@ package expo.modules.mesh_peer_module
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.*
@@ -24,6 +25,18 @@ class MeshPeerModule : Module() {
   
   // Strategy for connections - CLUSTER allows many-to-many connections
   private val strategy = Strategy.P2P_CLUSTER
+
+  companion object {
+    private const val REQUEST_CODE_PERMISSIONS = 1234
+  }
+
+  private val requiredPermissions = listOf(
+    Manifest.permission.ACCESS_FINE_LOCATION,
+    Manifest.permission.BLUETOOTH_ADVERTISE,
+    Manifest.permission.BLUETOOTH_CONNECT,
+    Manifest.permission.BLUETOOTH_SCAN,
+    Manifest.permission.NEARBY_WIFI_DEVICES
+  )
   
   // Helper function for debug logging
   private fun DebugLog(message: String) {
@@ -141,8 +154,10 @@ class MeshPeerModule : Module() {
 
     // Initialize Nearby Connections client
     OnCreate {
-      connectionsClient = Nearby.getConnectionsClient(appContext.reactContext!!)
+      val ctx = appContext.reactContext!!
+      connectionsClient = Nearby.getConnectionsClient(ctx)
     }
+
 
     // Define events that can be sent to JavaScript
     Events(
@@ -173,34 +188,41 @@ class MeshPeerModule : Module() {
       sendEvent("onMessageReceive", mapOf("value" to value))
     }
 
-    // New Nearby Connections functions. This function doesn't run it seems
-    AsyncFunction("requestPermissions") { promise: Promise ->
-      DebugLog("Requesting permissions on kotlin side")
-      val requiredPermissions = arrayOf(
-        Manifest.permission.BLUETOOTH,
-        Manifest.permission.BLUETOOTH_ADMIN,
-        Manifest.permission.ACCESS_WIFI_STATE,
-        Manifest.permission.CHANGE_WIFI_STATE,
-        Manifest.permission.ACCESS_COARSE_LOCATION,
-        Manifest.permission.ACCESS_FINE_LOCATION
-      )
-      
-      // Check if we have all permissions
-      if (hasRequiredPermissions()) {
-        promise.resolve(mapOf("granted" to true))
+    AsyncFunction("checkPermissions") { promise: Promise ->
+      val context = appContext.reactContext ?: run {
+        promise.reject("NO_CONTEXT", "App context is not available", null)
         return@AsyncFunction
       }
-      
-      // For now, return the permissions we need - React Native will handle the request
-      promise.resolve(mapOf(
-        "granted" to false,
-        "permissions" to requiredPermissions.toList()
-      ))
+      val allGranted = requiredPermissions.all {
+        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+      }
+      promise.resolve(allGranted)
     }
 
-    AsyncFunction("checkPermissions") { promise: Promise ->
-      promise.resolve(mapOf("granted" to hasRequiredPermissions()))
+    AsyncFunction("requestPermissions") { promise: Promise ->
+      DebugLog("Requesting permissions on Kotlin side")
+
+      val activity = appContext.currentActivity ?: run {
+        promise.reject("NO_ACTIVITY", "Activity not available", null)
+        return@AsyncFunction
+      }
+
+      val notGranted = requiredPermissions.filter {
+        ContextCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED
+      }
+
+      if (notGranted.isEmpty()) {
+        // Everything already granted
+        DebugLog("All permissions granted")
+        promise.resolve(true)
+        return@AsyncFunction
+      }
+      DebugLog("Asking permissions as not everything granted.")
+
+      ActivityCompat.requestPermissions(activity, notGranted.toTypedArray(), REQUEST_CODE_PERMISSIONS)
+      promise.resolve(true)
     }
+
     AsyncFunction("startAdvertising") { promise: Promise ->
       if (!hasRequiredPermissions()) {
         promise.reject("PERMISSION_DENIED", "Required permissions not granted", null)
@@ -311,19 +333,11 @@ class MeshPeerModule : Module() {
   }
 
   private fun hasRequiredPermissions(): Boolean {
-    return true;
 
     val context = appContext.reactContext ?: return false
-    val requiredPermissions = arrayOf(
-      Manifest.permission.BLUETOOTH,
-      Manifest.permission.BLUETOOTH_ADMIN,
-      Manifest.permission.ACCESS_WIFI_STATE,
-      Manifest.permission.CHANGE_WIFI_STATE,
-      Manifest.permission.ACCESS_COARSE_LOCATION
-    )
-    
     return requiredPermissions.all { permission ->
       ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
   }
+
 }

@@ -1,10 +1,8 @@
 import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
 import
   {
-    Alert,
     Keyboard,
     KeyboardAvoidingView,
-    PermissionsAndroid,
     Platform,
     ScrollView,
     StyleSheet,
@@ -24,6 +22,7 @@ export default function TabOneScreen() {
   const [connectedPeers, setConnectedPeers] = useState<string[]>([])
   const [isAdvertising, setIsAdvertising] = useState(false)
   const [isDiscovering, setIsDiscovering] = useState(false)
+  const [permissionsRequested, setPermissionsRequested] = useState(false)
 
   // Many of these listeners are unnecessary and shouldn't broadcast to frontend
   useEffect(() => {
@@ -87,64 +86,14 @@ export default function TabOneScreen() {
 
 const requestPermissions = async () => {
   try {
-    if (Platform.OS === 'android') {
-      const apiLevel = Platform.constants.Release;
-      const apiNumber = parseInt(apiLevel);
-      console.log("API: " + apiNumber);
-
-      let allGranted = true;
-      const grantedPermissions: string[] = [];
-      const deniedPermissions: string[] = [];
-
-      if (true) { //apiNumber >= 12
-        // Android 12+ - Use requestMultiple for all supported permissions
-        const permissions = [
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-          PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES,
-        ];
-
-        const granted = await PermissionsAndroid.requestMultiple(permissions);
-        
-        Object.entries(granted).forEach(([perm, status]) => {
-          if (status === PermissionsAndroid.RESULTS.GRANTED) {
-            grantedPermissions.push(perm);
-          } else {
-            deniedPermissions.push(perm);
-            allGranted = false;
-          }
-        });
-      } else {
-      }
-
-      if (allGranted) {
-        setMessages(messages => [...messages, `✅ All permissions granted!`]);
-
-        const res = await MeshPeerModule.checkPermissions()
-        if (!res.granted)
-        {
-          await MeshPeerModule.requestPermissions()
-        }
-
-        return true;
-      } else {
-        const deniedNames = deniedPermissions.map(p => p.split('.').pop()).join(', ');
-        setMessages(messages => [...messages, `❌ Denied: ${deniedNames}`]);
-        Alert.alert(
-          'Permissions Required',
-          'CruiseChat needs location and Bluetooth permissions to find nearby devices. Please grant all permissions in Settings.',
-          [{ text: 'OK' }]
-        );
-        return false;
-      }
-    }
+    await MeshPeerModule.requestPermissions()
+    setPermissionsRequested(true);
+    setMessages(messages => [...messages, `🔐 Permissions requested`]);
     return true;
   } catch (error) {
     console.error('Permission request failed:', error);
     setMessages(messages => [...messages, `❌ Permission error: ${error}`]);
+    setPermissionsRequested(true); // Still show buttons even if permissions failed
     return false;
   }
 };
@@ -260,28 +209,41 @@ const requestPermissions = async () => {
           
           {/* Control buttons */}
           <View style={styles.controlsContainer}>
-            <View style={styles.buttonRow}>
+            {!permissionsRequested ? (
               <TouchableOpacity 
-                style={[styles.debugButton, isAdvertising && styles.activeButton]} 
-                onPress={isAdvertising ? stopAdvertising : startAdvertising}
+                style={styles.permissionButton} 
+                onPress={requestPermissions}
               >
-                <Text style={styles.debugButtonText}>
-                  {isAdvertising ? '📡 Stop' : '� Broadcast'}
+                <Text style={styles.permissionButtonText}>
+                  🔐 Request Permissions
                 </Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.debugButton, isDiscovering && styles.activeButton]} 
-                onPress={isDiscovering ? stopDiscovery : startDiscovery}
-              >
-                <Text style={styles.debugButtonText}>
-                  {isDiscovering ? '🔍 Stop' : '🔍 Discover'}
+            ) : (
+              <>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity 
+                    style={[styles.debugButton, isAdvertising && styles.activeButton]} 
+                    onPress={isAdvertising ? stopAdvertising : startAdvertising}
+                  >
+                    <Text style={styles.debugButtonText}>
+                      {isAdvertising ? '📡 Stop' : '📡 Broadcast'}
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.debugButton, isDiscovering && styles.activeButton]} 
+                    onPress={isDiscovering ? stopDiscovery : startDiscovery}
+                  >
+                    <Text style={styles.debugButtonText}>
+                      {isDiscovering ? '🔍 Stop' : '🔍 Discover'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.statusText}>
+                  Connected: {connectedPeers.length} • {isAdvertising ? 'Broadcasting' : isDiscovering ? 'Discovering' : 'Idle'}
                 </Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.statusText}>
-              Connected: {connectedPeers.length} • {isAdvertising ? 'Broadcasting' : isDiscovering ? 'Discovering' : 'Idle'}
-            </Text>
+              </>
+            )}
           </View>
           
           {/* Input area */}
@@ -419,6 +381,19 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 14,
     color: '#666',
+    textAlign: 'center',
+  },
+  permissionButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 25,
+    marginBottom: 10,
+  },
+  permissionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
     textAlign: 'center',
   },
 });
