@@ -39,8 +39,6 @@ export type MeshPeerModuleEvents = {
   onPeerLost: (params: PeerDisconnectedPayload) => void;
   onMessageReceived: (params: MessageReceivedPayload) => void;
   onConnectionFailed: (params: ConnectionFailedPayload) => void;
-  onAdvertisingStarted: () => void;
-  onDiscoveryStarted: () => void;
   onDebug: (params: { message: string }) => void;
   onError: (params: { error: string }) => void;
 };

@@ -31,6 +31,9 @@ class NearbyService : Service() {
     private val strategy = Strategy.P2P_CLUSTER
     private val binder = LocalBinder()
     
+    // Persistent database connection
+    private var database: SQLiteDatabase? = null
+    
     // Callback to notify the module about events
     interface NearbyServiceListener {
         fun onPeerDiscovered(endpointId: String, name: String)
@@ -50,6 +53,7 @@ class NearbyService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "NearbyService onCreate() called")
+        initializeDatabase()
         createNotificationChannel()
         connectionsClient = Nearby.getConnectionsClient(this)
     }
@@ -139,8 +143,6 @@ class NearbyService : Service() {
     }
     
     fun broadcastMessage(message: String): Boolean {
-        if (connectedEndpoints.isEmpty()) return false
-        
         val payload = Payload.fromBytes(message.toByteArray(StandardCharsets.UTF_8))
         connectedEndpoints.forEach { endpointId ->
             connectionsClient.sendPayload(endpointId, payload)
@@ -222,11 +224,30 @@ class NearbyService : Service() {
         }
     }
     
-    private fun storeMessage(content: String, senderId: String) {
+    private fun initializeDatabase() {
         try {
             val dbPath = getDatabasePath()
-            val database = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READWRITE)
-            
+            database = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READWRITE)
+            Log.d(TAG, "Database connection established")
+        } catch (e: SQLiteException) {
+            Log.e(TAG, "Failed to initialize database: ${e.message}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing database: ${e.message}")
+        }
+    }
+    
+    private fun closeDatabase() {
+        try {
+            database?.close()
+            database = null
+            Log.d(TAG, "Database connection closed")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error closing database: ${e.message}")
+        }
+    }
+    
+    private fun storeMessage(content: String, senderId: String) {
+        try {
             val messageId = UUID.randomUUID().toString()
             val timestamp = System.currentTimeMillis() / 1000 // Unix timestamp
             
@@ -235,8 +256,7 @@ class NearbyService : Service() {
                 VALUES (?, ?, ?, ?, ?)
             """.trimIndent()
             
-            database.execSQL(insertSql, arrayOf(messageId, content, senderId, "text", timestamp))
-            database.close()
+            database!!.execSQL(insertSql, arrayOf(messageId, content, senderId, "text", timestamp))
             
             Log.d(TAG, "Message stored in database: $messageId")
             
@@ -255,28 +275,51 @@ class NearbyService : Service() {
         val messageIds = mutableListOf<String>()
         
         try {
-            val dbPath = getDatabasePath()
-            val database = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READONLY)
+            val cursor = database!!.rawQuery("SELECT id FROM messages ORDER BY created_at DESC", null)
             
-            val cursor = database.rawQuery("SELECT id FROM messages ORDER BY created_at DESC", null)
-            
-            if (cursor.moveToFirst()) {
-                do {
-                    val messageId = cursor.getString(cursor.getColumnIndexOrThrow("id"))
-                    messageIds.add(messageId)
-                } while (cursor.moveToNext())
+            cursor.use { // Use 'use' to ensure cursor is closed automatically
+                if (cursor.moveToFirst()) {
+                    do {
+                        val messageId = cursor.getString(cursor.getColumnIndexOrThrow("id"))
+                        messageIds.add(messageId)
+                    } while (cursor.moveToNext())
+                }
             }
-            
-            cursor.close()
-            database.close()
             
         } catch (e: SQLiteException) {
             Log.e(TAG, "SQLite error getting message IDs: ${e.message}")
+            // Try to recover by reinitializing database
+            initializeDatabase()
         } catch (e: Exception) {
             Log.e(TAG, "Error getting message IDs: ${e.message}")
         }
         
         return messageIds
+    }
+    
+    fun getMessageCount(): Int {
+        try {
+            val db = database ?: run {
+                Log.w(TAG, "Database not initialized for message count")
+                return 0
+            }
+            
+            val cursor = db.rawQuery("SELECT COUNT(*) FROM messages", null)
+            cursor.use {
+                return if (cursor.moveToFirst()) {
+                    cursor.getInt(0)
+                } else {
+                    0
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting message count: ${e.message}")
+            return 0
+        }
+    }
+    
+    fun isDatabaseReady(): Boolean {
+        return database != null && database?.isOpen == true
     }
 
     private fun createNotificationChannel() {
@@ -304,6 +347,7 @@ class NearbyService : Service() {
         disconnectFromAllPeers()
         stopAdvertising()
         stopDiscovery()
+        closeDatabase()
         Log.d(TAG, "NearbyService destroyed")
     }
 }

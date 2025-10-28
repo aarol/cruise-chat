@@ -150,29 +150,39 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
     }
 
     AsyncFunction("startAdvertising") { promise: Promise ->
+      android.util.Log.d("MeshPeerModule", "startAdvertising called")
+      
       if (!hasRequiredPermissions()) {
-        promise.reject("PERMISSION_DENIED", "Required permissions not granted", null)
-        return@AsyncFunction
+      android.util.Log.w("MeshPeerModule", "startAdvertising failed: permissions not granted")
+      promise.reject("PERMISSION_DENIED", "Required permissions not granted", null)
+      return@AsyncFunction
       }
-
+      
       val success = nearbyService?.startAdvertising() ?: false
       if (success) {
-        promise.resolve(null)
+      android.util.Log.d("MeshPeerModule", "startAdvertising succeeded")
+      promise.resolve(null)
       } else {
-        promise.reject("ADVERTISING_FAILED", "Failed to start advertising", null)
+      android.util.Log.e("MeshPeerModule", "startAdvertising failed")
+      promise.reject("ADVERTISING_FAILED", "Failed to start advertising", null)
       }
     }
 
     AsyncFunction("startDiscovery") { promise: Promise ->
+      android.util.Log.d("MeshPeerModule", "startDiscovery called")
+      
       if (!hasRequiredPermissions()) {
+        android.util.Log.w("MeshPeerModule", "startDiscovery failed: permissions not granted")
         promise.reject("PERMISSION_DENIED", "Required permissions not granted", null)
         return@AsyncFunction
       }
 
       val success = nearbyService?.startDiscovery() ?: false
       if (success) {
+        android.util.Log.d("MeshPeerModule", "startDiscovery succeeded")
         promise.resolve(null)
       } else {
+        android.util.Log.e("MeshPeerModule", "startDiscovery failed")
         promise.reject("DISCOVERY_FAILED", "Failed to start discovery", null)
       }
     }

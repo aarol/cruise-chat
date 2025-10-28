@@ -1,0 +1,1 @@
+ALTER TABLE `messages` ADD `sent_to_peers` integer DEFAULT false NOT NULL;
