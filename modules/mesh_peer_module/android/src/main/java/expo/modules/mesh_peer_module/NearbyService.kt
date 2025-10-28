@@ -126,7 +126,6 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     }
 
     override fun onPayloadReceived(endpointId: String, payload: Payload) {
-        Log.d(TAG, "Got payload")
         when (payload.type) {
             Payload.Type.BYTES -> {
                 val messageData = String(payload.asBytes()!!, StandardCharsets.UTF_8)
@@ -140,11 +139,32 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                         MSG_TYPE_SYNC_RESPONSE -> handleSyncResponse(endpointId, jsonMessage)
                         MSG_TYPE_MESSAGE_BATCH -> handleMessageBatch(endpointId, jsonMessage)
                         MSG_TYPE_CHAT_MESSAGE -> {
+                            val messageId = jsonMessage.getString("id")
                             val content = jsonMessage.getString("content")
-                            // Store message in SQLite database
-                            storeMessage(content, endpointId)
-                            // Notify listener
-                            listener?.onMessageReceived(endpointId, content)
+                            val timestamp = jsonMessage.getLong("created_at")
+                            
+                            Log.d(TAG, "📨 Received chat message from $endpointId | ID: $messageId | Content: $content")
+                            
+                            // Check if we already have this message
+                            if (!messageExists(messageId)) {
+                                Log.d(TAG, "✅ New message, storing and broadcasting | ID: $messageId")
+                                
+                                // Store message in SQLite database
+                                val stored = storeMessageWithId(messageId, content, endpointId, "text", timestamp)
+                                Log.d(TAG, "💾 Message stored: $stored | ID: $messageId")
+                                
+                                // Broadcast to all connected peers (except sender)
+                                val connectedPeers = connectionHandler.getConnectedPeers().size
+                                Log.d(TAG, "📡 Broadcasting message to $connectedPeers peers (excluding sender $endpointId)")
+                                broadcastMessageToOthers(messageData)
+                                
+                                // Notify listener
+                                listener?.onMessageReceived(endpointId, content)
+                                notifyNewMessages(1)
+                                Log.d(TAG, "🔔 Notified listener about new message | ID: $messageId")
+                            } else {
+                                Log.d(TAG, "Message $messageId already exists, skipping")
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -209,12 +229,30 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     
     fun sendMessage(message: String): Boolean {
         return try {
+            val messageId = UUID.randomUUID().toString()
+            val timestamp = System.currentTimeMillis() / 1000
+            
+            Log.d(TAG, "📤 Sending new message | ID: $messageId | Content: $message")
+            
             val chatMessage = JSONObject().apply {
                 put("type", MSG_TYPE_CHAT_MESSAGE)
+                put("id", messageId)
                 put("content", message)
+                put("created_at", timestamp)
             }
+            
+            // Store locally first
+            val stored = storeMessageWithId(messageId, message, "local_user", "text", timestamp)
+            Log.d(TAG, "💾 Message stored locally: $stored | ID: $messageId")
+            
+            // Then broadcast to all peers
+            val connectedPeers = connectionHandler.getConnectedPeers()
+            Log.d(TAG, "📡 Broadcasting to ${connectedPeers.size} connected peers: $connectedPeers")
+            
             val payload = Payload.fromBytes(chatMessage.toString().toByteArray(StandardCharsets.UTF_8))
             connectionHandler.sendPayloads(payload)
+            
+            Log.d(TAG, "✅ Message broadcast complete | ID: $messageId")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error broadcasting message: ${e.message}")
@@ -280,6 +318,30 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             Log.d(TAG, "Notified listener about $newMessageCount new messages (total: $totalMessages)")
         } catch (e: Exception) {
             Log.e(TAG, "Error notifying about new messages: ${e.message}")
+        }
+    }
+    
+    private fun messageExists(messageId: String): Boolean {
+        return try {
+            val existsQuery = "SELECT COUNT(*) FROM messages WHERE id = ?"
+            val cursor = database?.rawQuery(existsQuery, arrayOf(messageId))
+            
+            cursor?.use {
+                it.moveToFirst() && it.getInt(0) > 0
+            } ?: false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking if message exists: ${e.message}")
+            false
+        }
+    }
+    
+    private fun broadcastMessageToOthers(messageJson: String) {
+        try {
+            val payload = Payload.fromBytes(messageJson.toByteArray(StandardCharsets.UTF_8))
+            connectionHandler.sendPayloads(payload)
+            Log.d(TAG, "Broadcasted message to all peers")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error broadcasting message: ${e.message}")
         }
     }
     
@@ -397,14 +459,14 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             val payload = Payload.fromBytes(messageBatch.toString().toByteArray(StandardCharsets.UTF_8))
             connectionHandler.sendPayload(endpointId, payload)
             
-            Log.d(TAG, "Sent message batch to $endpointId with ${messages.length()} messages")
+            Log.d(TAG, "Sent message batch to $endpointId with ${messages.size} messages")
         } catch (e: Exception) {
             Log.e(TAG, "Error sending message batch to $endpointId: ${e.message}")
         }
     }
     
-    private fun getMessagesByIds(messageIds: List<String>): JSONArray {
-        val messages = JSONArray()
+    private fun getMessagesByIds(messageIds: List<String>): List<JSONObject> {
+        val messages = mutableListOf<JSONObject>()
         try {
             if (messageIds.isEmpty()) return messages
             
@@ -423,7 +485,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                             put("message_type", cursor.getString(cursor.getColumnIndexOrThrow("message_type")))
                             put("created_at", cursor.getLong(cursor.getColumnIndexOrThrow("created_at")))
                         }
-                        messages.put(messageObj)
+                        messages.add(messageObj)
                     } while (cursor.moveToNext())
                 }
             }
