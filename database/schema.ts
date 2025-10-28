@@ -5,7 +5,7 @@ export const messages = sqliteTable('messages', {
   id: text('id').primaryKey(),
   content: text('content').notNull(),
   userId: text('user_id').notNull(),
-  messageType: text('message_type').default('text'), // 'text', 'image', 'file', etc.
+  sent_to_peers: integer({mode: "boolean"}).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 });
 

@@ -1,13 +1,12 @@
 import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
-import
-  {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity
-  } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity
+} from 'react-native';
 
 import { Text, View } from '@/components/Themed';
 import { addTextMessageToDb } from '@/database/services';
@@ -65,14 +64,6 @@ export default function TabOneScreen() {
       setMessages(messages => [...messages, `📱 ${data.message}`]);
     });
 
-    const advertisingStartedSubscription = MeshPeerModule.addListener('onAdvertisingStarted', () => {
-      setIsAdvertising(true);
-    });
-
-    const discoveryStartedSubscription = MeshPeerModule.addListener('onDiscoveryStarted', () => {
-      setIsDiscovering(true);
-    });
-
     const debugMessagesSubscription = MeshPeerModule.addListener('onDebug', (data) => {
       console.log('Native debug:', data.message);
       // setMessages(messages => [...messages, data.message]);
@@ -87,8 +78,6 @@ export default function TabOneScreen() {
       peerConnectedSubscription?.remove();
       peerDisconnectedSubscription?.remove();
       messageReceivedSubscription?.remove();
-      advertisingStartedSubscription?.remove();
-      discoveryStartedSubscription?.remove();
       debugMessagesSubscription?.remove();
       errorMessagesSubscription?.remove();
     };
@@ -125,15 +114,13 @@ export default function TabOneScreen() {
   };
 
   const toggleService = async () => {
-    if (!serviceRunning)
-    {
+    if (!serviceRunning) {
       MeshPeerModule.startNearbyService().then(() => console.log('ok')).catch((err) => {
         console.error('Failed to start service:', err);
       });
       setServiceRunning(true)
     }
-    else
-    {
+    else {
       MeshPeerModule.stopNearbyService().then(() => console.log('ok')).catch((err) => {
         console.error('Failed to stop service:', err);
       });
@@ -143,10 +130,12 @@ export default function TabOneScreen() {
 
   const startAdvertising = async () => {
     try {
+      console.log('Requesting permissions');
       const hasPermissions = await requestPermissions();
       if (!hasPermissions) return;
       setIsAdvertising('pending');
       await MeshPeerModule.startAdvertising();
+      setIsAdvertising(true);
     } catch (error) {
       setMessages(messages => [...messages, `❌ Failed to start advertising: ${error}`]);
     }
@@ -167,6 +156,9 @@ export default function TabOneScreen() {
       if (!hasPermissions) return;
       setIsDiscovering('pending');
       await MeshPeerModule.startDiscovery();
+      console.log('Discovery started');
+            setIsDiscovering(true);
+
     } catch (error) {
       setMessages(messages => [...messages, `❌ Failed to start discovery: ${error}`]);
     }
@@ -240,12 +232,12 @@ export default function TabOneScreen() {
               <View style={styles.buttonRow}>
                 <TouchableOpacity
                   style={[
-                    styles.debugButton, 
+                    styles.debugButton,
                     (isAdvertising === true || isDiscovering === true) && styles.activeButton,
                     (isAdvertising === 'pending' || isDiscovering === 'pending') && styles.pendingButton
                   ]}
                   onPress={(isAdvertising || isDiscovering) ? stopNearbyConnections : startNearbyConnections}
-                  disabled={isAdvertising=='pending' || isDiscovering=='pending'}
+                  disabled={isAdvertising == 'pending' || isDiscovering == 'pending'}
                 >
                   <Text style={styles.debugButtonText}>
                     {(isAdvertising || isDiscovering) ? '📡 Stop' : '📡 Find'}
@@ -262,7 +254,7 @@ export default function TabOneScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.statusText}>
-                Connected: {connectedPeers.length} • {(isAdvertising=='pending') ? 'Waiting...' : isDiscovering ? 'Discovering' : 'Idle'}
+                Connected: {connectedPeers.length} • {(isAdvertising == 'pending') ? 'Waiting...' : isDiscovering ? 'Discovering' : 'Idle'}
               </Text>
             </>
           )}
