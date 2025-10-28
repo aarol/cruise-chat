@@ -98,6 +98,13 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
     ))
   }
 
+  override fun onNewMessages(count: Int, totalMessages: Int) {
+    sendEvent("onNewMessages", mapOf(
+      "count" to count,
+      "totalMessages" to totalMessages
+    ))
+  }
+
   override fun definition() = ModuleDefinition {
     Name("MeshPeerModule")
 
@@ -116,7 +123,8 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       "onPeerDisconnected",
       "onPeerLost",
       "onMessageReceived",
-      "onConnectionFailed"
+      "onConnectionFailed",
+      "onNewMessages"
     )
 
     AsyncFunction("checkPermissions") { promise: Promise ->

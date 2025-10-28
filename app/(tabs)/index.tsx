@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
-import { addTextMessageToDb } from '@/database/services';
+import { addTextMessageToDb, getMessages } from '@/database/services';
 import { useEffect, useRef, useState } from 'react';
 
 export default function TabOneScreen() {
@@ -57,6 +57,14 @@ export default function TabOneScreen() {
       console.log('Peer disconnected:', data.endpointId);
       setMessages(messages => [...messages, `❌ Peer disconnected`]);
       MeshPeerModule.getConnectedPeers().then(setConnectedPeers);
+    });
+
+    const newMessagesSubscription = MeshPeerModule.addListener('onNewMessages', (data) => {
+      console.log(`${data.count} new messages received! Total messages: ${data.totalMessages}`);
+      console.log(`Reading messages from database...`);
+      getMessages().then(dbMessages => {
+        setMessages(dbMessages.map(msg => `📱 ${msg.content}`));
+      });
     });
 
     const messageReceivedSubscription = MeshPeerModule.addListener('onMessageReceived', (data) => {
@@ -157,7 +165,7 @@ export default function TabOneScreen() {
       setIsDiscovering('pending');
       await MeshPeerModule.startDiscovery();
       console.log('Discovery started');
-            setIsDiscovering(true);
+      setIsDiscovering(true);
 
     } catch (error) {
       setMessages(messages => [...messages, `❌ Failed to start discovery: ${error}`]);

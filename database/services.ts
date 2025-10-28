@@ -1,19 +1,20 @@
 import { nanoid } from 'nanoid';
 import { db } from './index';
-import { messages, type NewMessage } from './schema';
+import { type Message, messages, type NewMessage } from './schema';
 
 /**
  * Adds a new message to the database
  * @param messageData - The message data to insert
  * @returns Promise<string> - The ID of the inserted message
  */
-export const addMessage = async (messageData: Omit<NewMessage, 'id' | 'createdAt'>): Promise<string> => {
-  // Generate a unique ID for the message (21 characters, URL-safe)
+export const addMessage = async (message: string, userId: string): Promise<string> => {
+
   const messageId = nanoid(12);
-  
+
   const newMessage: NewMessage = {
     id: messageId,
-    ...messageData,
+    content: message,
+    userId,
   };
 
   try {
@@ -32,11 +33,7 @@ export const addMessage = async (messageData: Omit<NewMessage, 'id' | 'createdAt
  * @returns Promise<string> - The ID of the inserted message
  */
 export const addTextMessageToDb = async (content: string, userId: string): Promise<string> => {
-  return addMessage({
-    content,
-    userId,
-    messageType: 'text',
-  });
+  return addMessage(content, userId);
 };
 
 export const getMessageIds = async (): Promise<string[]> => {
@@ -46,5 +43,14 @@ export const getMessageIds = async (): Promise<string[]> => {
   } catch (error) {
     console.error('Error fetching message ids:', error);
     throw new Error(`Failed to get message ids: ${error}`);
+  }
+};
+
+export const getMessages = async (): Promise<Message[]> => {
+  try {
+    return await db.select().from(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    throw new Error(`Failed to get messages: ${error}`);
   }
 };

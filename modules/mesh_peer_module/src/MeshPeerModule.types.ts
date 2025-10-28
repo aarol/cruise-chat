@@ -31,6 +31,11 @@ export type ChangeEventPayload = {
   value: string;
 };
 
+export type NewMessagesPayload = {
+  count: number;
+  totalMessages: number;
+};
+
 // These are the react functions we can call from native code
 export type MeshPeerModuleEvents = {
   onPeerDiscovered: (params: PeerInfo) => void;
@@ -39,6 +44,7 @@ export type MeshPeerModuleEvents = {
   onPeerLost: (params: PeerDisconnectedPayload) => void;
   onMessageReceived: (params: MessageReceivedPayload) => void;
   onConnectionFailed: (params: ConnectionFailedPayload) => void;
+  onNewMessages: (params: NewMessagesPayload) => void;
   onDebug: (params: { message: string }) => void;
   onError: (params: { error: string }) => void;
 };
