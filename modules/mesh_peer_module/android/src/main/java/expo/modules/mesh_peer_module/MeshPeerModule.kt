@@ -176,20 +176,11 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
     }
 
     AsyncFunction("sendMessage") { endpointId: String, message: String, promise: Promise ->
-      val success = nearbyService?.sendMessage(endpointId, message) ?: false
+      val success = nearbyService?.sendMessage(message) ?: false
       if (success) {
         promise.resolve(null)
       } else {
         promise.reject("SEND_FAILED", "Failed to send message", null)
-      }
-    }
-
-    AsyncFunction("broadcastMessage") { message: String, promise: Promise ->
-      val success = nearbyService?.broadcastMessage(message) ?: false
-      if (success) {
-        promise.resolve(null)
-      } else {
-        promise.reject("BROADCAST_FAILED", "Failed to broadcast message", null)
       }
     }
 

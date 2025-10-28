@@ -126,7 +126,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     }
 
     override fun onPayloadReceived(endpointId: String, payload: Payload) {
-        Log.d(TAG, "Got some load")
+        Log.d(TAG, "Got payload")
         when (payload.type) {
             Payload.Type.BYTES -> {
                 val messageData = String(payload.asBytes()!!, StandardCharsets.UTF_8)
@@ -206,25 +206,8 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     private fun getDatabasePath(): String {
         return File(filesDir, "SQLite/cruise-chat.db").absolutePath
     }
-
-    fun sendMessage(endpointId: String, message: String): Boolean {
-        Log.d(TAG, "Sending message")
-        try {
-            val chatMessage = JSONObject().apply {
-                put("type", MSG_TYPE_CHAT_MESSAGE)
-                put("content", message)
-            }
-            val payload = Payload.fromBytes(chatMessage.toString().toByteArray(StandardCharsets.UTF_8))
-            connectionHandler.sendPayload(endpointId, payload)
-            return true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error sending message to $endpointId: ${e.message}")
-            return false
-        }
-        return true;
-    }
     
-    fun broadcastMessage(message: String): Boolean {
+    fun sendMessage(message: String): Boolean {
         return try {
             val chatMessage = JSONObject().apply {
                 put("type", MSG_TYPE_CHAT_MESSAGE)
@@ -422,7 +405,6 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     
     private fun getMessagesByIds(messageIds: List<String>): JSONArray {
         val messages = JSONArray()
-        
         try {
             if (messageIds.isEmpty()) return messages
             
