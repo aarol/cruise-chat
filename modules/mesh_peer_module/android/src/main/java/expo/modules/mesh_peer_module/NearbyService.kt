@@ -113,6 +113,7 @@ class NearbyService : Service() {
                 connectionLifecycleCallback,
                 advertisingOptions
             )
+            Log.d(TAG, "Starting advertising")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start advertising: ${e.message}")
@@ -128,6 +129,7 @@ class NearbyService : Service() {
                 endpointDiscoveryCallback,
                 discoveryOptions
             )
+            Log.d(TAG, "Starting discovery")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start discovery: ${e.message}")
@@ -136,14 +138,17 @@ class NearbyService : Service() {
     }
     
     fun stopAdvertising() {
+        Log.d(TAG, "stop advertising")
         connectionsClient.stopAdvertising()
     }
     
     fun stopDiscovery() {
+        Log.d(TAG, "stop discovery")
         connectionsClient.stopDiscovery()
     }
     
     fun sendMessage(endpointId: String, message: String): Boolean {
+        Log.d(TAG, "Sending message")
         return if (connectedEndpoints.contains(endpointId)) {
             try {
                 val chatMessage = JSONObject().apply {
@@ -210,15 +215,18 @@ class NearbyService : Service() {
      */
     private val connectionLifecycleCallback = object : ConnectionLifecycleCallback() {
         override fun onConnectionInitiated(endpointId: String, connectionInfo: ConnectionInfo) {
+            Log.d(TAG, "Connection initiated")
             connectionsClient.acceptConnection(endpointId, payloadCallback)
         }
 
         override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
+            Log.d(TAG, "Connection made with code " + result.status.statusCode)
             when (result.status.statusCode) {
                 ConnectionsStatusCodes.STATUS_OK -> {
                     connectedEndpoints.add(endpointId)
                     listener?.onPeerConnected(endpointId)
                     
+                    Log.d(TAG, "Connection successful")
                     // Initiate message synchronization by sending our known message IDs
                     initiateSyncWithPeer(endpointId)
                 }
@@ -226,6 +234,7 @@ class NearbyService : Service() {
                     listener?.onConnectionFailed(endpointId, "Connection rejected")
                 }
                 else -> {
+                    Log.d(TAG, "Connection made, but it errored.")
                     listener?.onConnectionFailed(endpointId, "Connection failed with status: ${result.status.statusCode}")
                 }
             }
@@ -239,6 +248,7 @@ class NearbyService : Service() {
 
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
+            Log.d(TAG, "Got some load")
             when (payload.type) {
                 Payload.Type.BYTES -> {
                     val messageData = String(payload.asBytes()!!, StandardCharsets.UTF_8)
@@ -276,11 +286,18 @@ class NearbyService : Service() {
 
     private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
-            connectionsClient.requestConnection(
-                "CruiseChat_${android.os.Build.MODEL}",
-                endpointId,
-                connectionLifecycleCallback
-            )
+            Log.d(TAG, "Endpoint foudn!!!!. We send: ${"CruiseChat_${Build.MODEL}" < info.endpointName}")
+            if ("CruiseChat_${Build.MODEL}" < info.endpointName) {
+                connectionsClient.requestConnection(
+                    "CruiseChat_${android.os.Build.MODEL}",
+                    endpointId,
+                    connectionLifecycleCallback
+                ).addOnSuccessListener {
+                    Log.d(TAG, "Connection successful")
+                }.addOnFailureListener { exception ->
+                    Log.d(TAG, "❌ Connection failed: ${exception.message}")
+                }
+            }
             
             listener?.onPeerDiscovered(endpointId, info.endpointName)
         }

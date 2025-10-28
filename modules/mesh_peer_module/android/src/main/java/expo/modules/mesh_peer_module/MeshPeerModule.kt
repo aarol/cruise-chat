@@ -64,6 +64,10 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
     }
   }
 
+  private fun DebugLog(message: String) {
+    sendEvent("onDebug", mapOf("message" to message))
+  }
+
   // NearbyService.NearbyServiceListener implementation
   override fun onPeerDiscovered(endpointId: String, name: String) {
     sendEvent("onPeerDiscovered", mapOf(
@@ -73,6 +77,7 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
   }
 
   override fun onPeerConnected(endpointId: String) {
+    DebugLog("Peer connected")
     sendEvent("onPeerConnected", mapOf("endpointId" to endpointId))
   }
 
