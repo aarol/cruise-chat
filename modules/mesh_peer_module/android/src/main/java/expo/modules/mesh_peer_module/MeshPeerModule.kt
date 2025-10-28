@@ -129,7 +129,8 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       "onPeerLost",
       "onMessageReceived",
       "onConnectionFailed",
-      "onNewMessages"
+      "onNewMessages",
+      "onDebug"
     )
 
     AsyncFunction("checkPermissions") { promise: Promise ->

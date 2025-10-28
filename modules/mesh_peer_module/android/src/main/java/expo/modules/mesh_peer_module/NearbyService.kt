@@ -223,10 +223,15 @@ class NearbyService : Service() {
             Log.d(TAG, "Connection made with code " + result.status.statusCode)
             when (result.status.statusCode) {
                 ConnectionsStatusCodes.STATUS_OK -> {
+                    Log.d(TAG, "Setup init 1")
+                    Log.d(TAG, "" + (connectedEndpoints == null))
+                    Log.d(TAG, "" + (connectedEndpoints))
+                    Log.d(TAG, "" + (listener))
                     connectedEndpoints.add(endpointId)
+                    Log.d(TAG, "middle")
                     listener?.onPeerConnected(endpointId)
                     
-                    Log.d(TAG, "Connection successful")
+                    Log.d(TAG, "Setup init 2")
                     // Initiate message synchronization by sending our known message IDs
                     initiateSyncWithPeer(endpointId)
                 }
