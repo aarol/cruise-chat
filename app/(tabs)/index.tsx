@@ -167,7 +167,7 @@ export default function TabOneScreen() {
 
     if (inputText.trim()) {
       try {
-        await MeshPeerModule.sendMessage(newMessage.id, newMessage.content, newMessage.userId, newMessage.createdAt.getTime() * 1000);
+        await MeshPeerModule.sendMessage(newMessage.id, newMessage.content, newMessage.userId, newMessage.createdAt.getTime() * 1000, newMessage.chatId);
         setMessages(messages => [...messages, newMessage]);
         setInputText('');
         // Always scroll to bottom when user sends a message
