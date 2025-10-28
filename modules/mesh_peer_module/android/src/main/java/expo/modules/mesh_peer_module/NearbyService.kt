@@ -296,7 +296,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         try {
             val totalMessages = getMessageCount()
             listener?.onNewMessages(newMessageCount, totalMessages)
-            Log.d(TAG, "Notified listener about $newMessageCount new messages (total: $totalMessages)")
+            Log.d(TAG, "Notified listener about $newMessageCount new messages (total: ${totalMessages})")
         } catch (e: Exception) {
             Log.e(TAG, "Error notifying about new messages: ${e.message}")
         }
@@ -369,13 +369,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             val payload = Payload.fromBytes(syncResponse.toString().toByteArray(StandardCharsets.UTF_8))
             connectionHandler.sendPayload(endpointId, payload)
             
-            // Also send messages that the peer doesn't have
-            val messagesToSend = localMessageIds - receivedIds
-            if (messagesToSend.isNotEmpty()) {
-                sendMessageBatch(endpointId, messagesToSend.toList())
-            }
-            
-            Log.d(TAG, "Handled sync request from $endpointId: requesting ${missingMessageIds.size} messages, sending ${messagesToSend.size} messages")
+            Log.d(TAG, "Handled sync request from $endpointId: requesting ${missingMessageIds.size} messages")
         } catch (e: Exception) {
             Log.e(TAG, "Error handling sync request from $endpointId: ${e.message}")
         }
@@ -393,7 +387,6 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             
             if (idsToSend.isNotEmpty()) {
                 sendMessageBatch(endpointId, idsToSend)
-                Log.d(TAG, "Sending ${idsToSend.size} messages to $endpointId in response to sync request")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling sync response from $endpointId: ${e.message}")
@@ -401,6 +394,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     }
     
     private fun handleMessageBatch(endpointId: String, jsonMessage: JSONObject) {
+        Log.d(TAG, "Received message batch from $endpointId. Processing...")
         try {
             val messages = jsonMessage.getJSONArray("messages")
             var storedCount = 0

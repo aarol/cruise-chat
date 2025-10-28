@@ -1,13 +1,14 @@
 import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  ToastAndroid,
-  TouchableOpacity
-} from 'react-native';
+import
+  {
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    ToastAndroid,
+    TouchableOpacity
+  } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
 import { Message } from '@/database/schema';
@@ -134,6 +135,7 @@ export default function TabOneScreen() {
       MeshPeerModule.stopNearbyService().then(() => console.log('ok')).catch((err) => {
         console.error('Failed to stop service:', err);
       });
+      setConnectedPeers([])
       setServiceRunning(false)
     }
   }
@@ -167,6 +169,7 @@ export default function TabOneScreen() {
 
     if (inputText.trim()) {
       try {
+        console.log("Sending a message through backend")
         await MeshPeerModule.sendMessage(newMessage.id, newMessage.content, newMessage.userId, newMessage.createdAt.getTime() * 1000, newMessage.chatId);
         setMessages(messages => [...messages, newMessage]);
         setInputText('');
