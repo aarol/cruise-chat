@@ -155,7 +155,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                                 Log.d(TAG, "✅ New message, storing and broadcasting | ID: ${message.id}")
                                 
                                 // Store message in SQLite database
-                                val stored = storeMessageWithId(message)
+                                val stored = storeMessage(message)
                                 Log.d(TAG, "💾 Message stored: $stored | ID: ${message.id}")
                                 
                                 // Broadcast to all connected peers (except sender)
@@ -174,9 +174,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                     }
                 } catch (e: Exception) {
                     // If JSON parsing fails, treat as regular chat message for backward compatibility
-                    Log.w(TAG, "Failed to parse message as JSON, treating as plain text: ${e.message}")
-                    storeMessage(messageData, endpointId)
-                    listener?.onMessageReceived(endpointId, messageData)
+                    Log.w(TAG, "Failed to parse message as JSON. ${e.message}")
                 }
             }
         }
@@ -204,30 +202,6 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         }
     }
     
-    private fun storeMessage(content: String, senderId: String) {
-        try {
-            val messageId = UUID.randomUUID().toString()
-            val timestamp = System.currentTimeMillis() / 1000 // Unix timestamp
-            
-            val insertSql = """
-                INSERT INTO messages (id, content, user_id, message_type, created_at) 
-                VALUES (?, ?, ?, ?, ?)
-            """.trimIndent()
-            
-            database!!.execSQL(insertSql, arrayOf(messageId, content, senderId, "text", timestamp))
-            
-            Log.d(TAG, "Message stored in database: $messageId")
-            
-            // Notify listener about new message
-            notifyNewMessages(1)
-            
-        } catch (e: SQLiteException) {
-            Log.e(TAG, "SQLite error storing message: ${e.message}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error storing message: ${e.message}")
-        }
-    }
-    
     private fun getDatabasePath(): String {
         return File(filesDir, "SQLite/cruise-chat.db").absolutePath
     }
@@ -249,7 +223,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             }
             
             // Store locally first
-            val stored = storeMessageWithId(message)
+            val stored = storeMessage(message)
             Log.d(TAG, "💾 Message stored locally: $stored | ID: $messageId")
             
             // Then broadcast to all peers
@@ -440,7 +414,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 val chat = messageObj.optString("chat", "default")
                 
                 val message = Message(messageId, content, userId, createdAt, chat)
-                if (storeMessageWithId(message)) {
+                if (storeMessage(message)) {
                     storedCount++
                 }
             }
@@ -479,7 +453,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             if (messageIds.isEmpty()) return messages
             
             val placeholders = messageIds.joinToString(",") { "?" }
-            val query = "SELECT id, content, user_id, message_type, created_at FROM messages WHERE id IN ($placeholders)"
+            val query = "SELECT id, content, user_id, chat_id, created_at FROM messages WHERE id IN ($placeholders)"
             
             val cursor = database?.rawQuery(query, messageIds.toTypedArray())
             
@@ -490,7 +464,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                             put("id", cursor.getString(cursor.getColumnIndexOrThrow("id")))
                             put("content", cursor.getString(cursor.getColumnIndexOrThrow("content")))
                             put("user_id", cursor.getString(cursor.getColumnIndexOrThrow("user_id")))
-                            put("message_type", cursor.getString(cursor.getColumnIndexOrThrow("message_type")))
+                            put("chat_id", cursor.getString(cursor.getColumnIndexOrThrow("chat_id")))
                             put("created_at", cursor.getLong(cursor.getColumnIndexOrThrow("created_at")))
                         }
                         messages.add(messageObj)
@@ -504,7 +478,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         return messages
     }
     
-    private fun storeMessageWithId(message: Message): Boolean {
+    private fun storeMessage(message: Message): Boolean {
         try {
             // Check if message already exists
             val existsQuery = "SELECT COUNT(*) FROM messages WHERE id = ?"
@@ -520,7 +494,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             }
             
             val insertSql = """
-                INSERT INTO messages (id, content, user_id, message_type, created_at) 
+                INSERT INTO messages (id, content, user_id, chat_id, created_at) 
                 VALUES (?, ?, ?, ?, ?)
             """.trimIndent()
             
