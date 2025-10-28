@@ -29,26 +29,11 @@ class NearbyService : Service() {
         Log.d(TAG, "NearbyService onStartCommand() called")
 
         // Make the app open when clicked
-        // val openAppIntent: Intent = Intent(this, com.anonymous.cruisechat.MainActivity::class.java).apply {
-        //     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        // }
-        // val pendingIntent: PendingIntent = PendingIntent.getActivity(
-        //     this, 0, openAppIntent,
-        //     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        // )
+        val intent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-        // Tried to make the notification persistant
-        // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        //     val channel = NotificationChannel(
-        //         CHANNEL_ID,
-        //         "Persistent Service Channel",
-        //         NotificationManager.IMPORTANCE_LOW
-        //     )
-        //     val manager = getSystemService(NotificationManager::class.java)
-        //     manager.createNotificationChannel(channel)
-        // }
-
-        
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Nearby Connections")
             .setContentText("Discovering nearby devices...")
@@ -57,8 +42,8 @@ class NearbyService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setShowWhen(true)
-            .setAutoCancel(false)
-            // .setContentIntent(pendingIntent) // Open app when clicked
+            .setContentIntent(pendingIntent) // Open app when clicked
+            .setAutoCancel(false) // Don't remove when user taps
             .build()
 
         try {
@@ -89,7 +74,7 @@ class NearbyService : Service() {
             val serviceChannel = NotificationChannel(
                 CHANNEL_ID,
                 "Nearby Service Channel",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Shows status of nearby device connections"
                 setShowBadge(true)
