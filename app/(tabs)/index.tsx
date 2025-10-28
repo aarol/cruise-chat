@@ -62,9 +62,7 @@ export default function TabOneScreen() {
     const newMessagesSubscription = MeshPeerModule.addListener('onNewMessages', (data) => {
       console.log(`${data.count} new messages received! Total messages: ${data.totalMessages}`);
       console.log(`Reading messages from database...`);
-      getMessages().then(dbMessages => {
-        setMessages(dbMessages.map(msg => `📱 ${msg.content}`));
-      });
+      setMessagesFromDb();
     });
 
     const messageReceivedSubscription = MeshPeerModule.addListener('onMessageReceived', (data) => {
@@ -81,6 +79,8 @@ export default function TabOneScreen() {
       setMessages(messages => [...messages, "Error: " + data.error]);
     });
 
+    setMessagesFromDb();
+
     return () => {
       peerDiscoveredSubscription?.remove();
       peerConnectedSubscription?.remove();
@@ -88,6 +88,7 @@ export default function TabOneScreen() {
       messageReceivedSubscription?.remove();
       debugMessagesSubscription?.remove();
       errorMessagesSubscription?.remove();
+      newMessagesSubscription?.remove();
     };
   }, [])
 
@@ -110,6 +111,13 @@ export default function TabOneScreen() {
       return false;
     }
   };
+
+
+  const setMessagesFromDb = async () => {
+    getMessages().then(dbMessages => {
+        setMessages(dbMessages.map(msg => `📱 ${msg.content}`));
+    });
+  }
 
   const startNearbyConnections = async () => {
     startAdvertising()
