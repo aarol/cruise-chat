@@ -139,19 +139,24 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                         MSG_TYPE_SYNC_RESPONSE -> handleSyncResponse(endpointId, jsonMessage)
                         MSG_TYPE_MESSAGE_BATCH -> handleMessageBatch(endpointId, jsonMessage)
                         MSG_TYPE_CHAT_MESSAGE -> {
-                            val messageId = jsonMessage.getString("id")
-                            val content = jsonMessage.getString("content")
-                            val timestamp = jsonMessage.getLong("created_at")
+                            // Create message object from JSON
+                            val message = Message(
+                                id = jsonMessage.getString("id"),
+                                content = jsonMessage.getString("content"),
+                                sender = jsonMessage.optString("sender", endpointId),
+                                time = jsonMessage.getLong("created_at"),
+                                chat = jsonMessage.optString("chat", "default")
+                            )
                             
-                            Log.d(TAG, "📨 Received chat message from $endpointId | ID: $messageId | Content: $content")
+                            Log.d(TAG, "📨 Received chat message from $endpointId | ID: ${message.id} | Content: ${message.content}")
                             
                             // Check if we already have this message
-                            if (!messageExists(messageId)) {
-                                Log.d(TAG, "✅ New message, storing and broadcasting | ID: $messageId")
+                            if (!messageExists(message.id)) {
+                                Log.d(TAG, "✅ New message, storing and broadcasting | ID: ${message.id}")
                                 
                                 // Store message in SQLite database
-                                val stored = storeMessageWithId(messageId, content, endpointId, "text", timestamp)
-                                Log.d(TAG, "💾 Message stored: $stored | ID: $messageId")
+                                val stored = storeMessageWithId(message)
+                                Log.d(TAG, "💾 Message stored: $stored | ID: ${message.id}")
                                 
                                 // Broadcast to all connected peers (except sender)
                                 val connectedPeers = connectionHandler.getConnectedPeers().size
@@ -159,11 +164,11 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                                 broadcastMessageToOthers(messageData)
                                 
                                 // Notify listener
-                                listener?.onMessageReceived(endpointId, content)
+                                listener?.onMessageReceived(endpointId, message.content)
                                 notifyNewMessages(1)
-                                Log.d(TAG, "🔔 Notified listener about new message | ID: $messageId")
+                                Log.d(TAG, "🔔 Notified listener about new message | ID: ${message.id}")
                             } else {
-                                Log.d(TAG, "Message $messageId already exists, skipping")
+                                Log.d(TAG, "Message ${message.id} already exists, skipping")
                             }
                         }
                     }
@@ -227,22 +232,24 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         return File(filesDir, "SQLite/cruise-chat.db").absolutePath
     }
     
-    fun sendMessage(message: String): Boolean {
+    fun sendMessage(message: Message): Boolean {
         return try {
-            val messageId = UUID.randomUUID().toString()
-            val timestamp = System.currentTimeMillis() / 1000
+            val messageId = message.id
+            val timestamp = message.time
             
             Log.d(TAG, "📤 Sending new message | ID: $messageId | Content: $message")
             
             val chatMessage = JSONObject().apply {
                 put("type", MSG_TYPE_CHAT_MESSAGE)
-                put("id", messageId)
-                put("content", message)
-                put("created_at", timestamp)
+                put("id", message.id)
+                put("content", message.content)
+                put("chat", message.chat)
+                put("sender", message.sender)
+                put("created_at", message.time)
             }
             
             // Store locally first
-            val stored = storeMessageWithId(messageId, message, "local_user", "text", timestamp)
+            val stored = storeMessageWithId(message)
             Log.d(TAG, "💾 Message stored locally: $stored | ID: $messageId")
             
             // Then broadcast to all peers
@@ -429,10 +436,11 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 val messageId = messageObj.getString("id")
                 val content = messageObj.getString("content")
                 val userId = messageObj.getString("user_id")
-                val messageType = messageObj.getString("message_type")
                 val createdAt = messageObj.getLong("created_at")
+                val chat = messageObj.optString("chat", "default")
                 
-                if (storeMessageWithId(messageId, content, userId, messageType, createdAt)) {
+                val message = Message(messageId, content, userId, createdAt, chat)
+                if (storeMessageWithId(message)) {
                     storedCount++
                 }
             }
@@ -496,18 +504,18 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         return messages
     }
     
-    private fun storeMessageWithId(messageId: String, content: String, userId: String, messageType: String, createdAt: Long): Boolean {
+    private fun storeMessageWithId(message: Message): Boolean {
         try {
             // Check if message already exists
             val existsQuery = "SELECT COUNT(*) FROM messages WHERE id = ?"
-            val cursor = database?.rawQuery(existsQuery, arrayOf(messageId))
+            val cursor = database?.rawQuery(existsQuery, arrayOf(message.id))
             
             val exists = cursor?.use {
                 it.moveToFirst() && it.getInt(0) > 0
             } ?: false
             
             if (exists) {
-                Log.d(TAG, "Message $messageId already exists, skipping")
+                Log.d(TAG, "Message ${message.id} already exists, skipping")
                 return false
             }
             
@@ -516,16 +524,16 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 VALUES (?, ?, ?, ?, ?)
             """.trimIndent()
             
-            database?.execSQL(insertSql, arrayOf(messageId, content, userId, messageType, createdAt))
+            database?.execSQL(insertSql, arrayOf(message.id, message.content, message.sender, "text", message.time))
             
-            Log.d(TAG, "Stored synced message: $messageId")
+            Log.d(TAG, "Stored synced message: ${message.id}")
             return true
             
         } catch (e: SQLiteException) {
-            Log.e(TAG, "SQLite error storing synced message $messageId: ${e.message}")
+            Log.e(TAG, "SQLite error storing synced message ${message.id}: ${e.message}")
             return false
         } catch (e: Exception) {
-            Log.e(TAG, "Error storing synced message $messageId: ${e.message}")
+            Log.e(TAG, "Error storing synced message ${message.id}: ${e.message}")
             return false
         }
     }

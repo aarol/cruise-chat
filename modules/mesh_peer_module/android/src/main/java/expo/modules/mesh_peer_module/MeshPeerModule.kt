@@ -14,6 +14,14 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.net.URL
 
+data class Message(
+    val id: String,
+    val content: String,
+    val sender: String,
+    val time: Long,
+    val chat: String
+)
+
 class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
   private var nearbyService: NearbyService? = null
   private var serviceBound = false
@@ -175,7 +183,8 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       promise.resolve(null)
     }
 
-    AsyncFunction("sendMessage") {message: String, promise: Promise ->
+    AsyncFunction("sendMessage") {id: String, content: String, sender: String, time: number, chat: string, promise: Promise ->
+      const message = Message(id=id, content=content, sender=sender, time=time, chat=chat)
       val success = nearbyService?.sendMessage(message) ?: false
       if (success) {
         promise.resolve(null)
