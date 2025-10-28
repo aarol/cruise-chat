@@ -110,8 +110,7 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
     Name("MeshPeerModule")
 
     OnCreate {
-      // Bind to the NearbyService
-      bindToNearbyService()
+
     }
 
     OnDestroy {
