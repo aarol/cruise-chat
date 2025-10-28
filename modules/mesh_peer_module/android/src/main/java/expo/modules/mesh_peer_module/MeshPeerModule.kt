@@ -183,8 +183,8 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       promise.resolve(null)
     }
 
-    AsyncFunction("sendMessage") {id: String, content: String, sender: String, time: number, chat: string, promise: Promise ->
-      const message = Message(id=id, content=content, sender=sender, time=time, chat=chat)
+    AsyncFunction("sendMessage") {id: String, content: String, sender: String, time: Long, chat: String, promise: Promise ->
+      val message = Message(id=id, content=content, sender=sender, time=time, chat=chat)
       val success = nearbyService?.sendMessage(message) ?: false
       if (success) {
         promise.resolve(null)
