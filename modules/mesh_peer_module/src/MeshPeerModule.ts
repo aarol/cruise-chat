@@ -13,8 +13,9 @@ declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   startAdvertising(): Promise<void>;
   startDiscovery(): Promise<void>;
   stopAdvertising(): Promise<void>;
-  startNearbyService(): Promise<void>;
   stopDiscovery(): Promise<void>;
+  startNearbyService(): Promise<void>;
+  stopNearbyService(): Promise<void>;
   broadcastMessage(message: string): Promise<void>;
   getConnectedPeers(): Promise<string[]>;
   disconnectFromPeer(endpointId: string): Promise<void>;

@@ -108,6 +108,7 @@ class MeshPeerModule : Module() {
     sendEvent("onDebug", mapOf("message" to message))
   }
 
+  // Kinda unnecessary function
   private fun checkPrerequisites() {
     DebugLog("=== CHECKING PREREQUISITES ===")
     

@@ -15,9 +15,6 @@ public class MeshPeerModule: Module {
       Double.pi
     }
 
-    // Defines event names that the module can send to JavaScript.
-    Events("onMessageReceive")
-
     // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
     // Function("hello") {
     //   return "Hello world! 👋"

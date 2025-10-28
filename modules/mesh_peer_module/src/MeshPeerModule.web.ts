@@ -1,9 +1,8 @@
 import { NativeModule, registerWebModule } from 'expo';
 
-import { ChangeEventPayload } from './MeshPeerModule.types';
 
 type MeshPeerModuleEvents = {
-  onMessageReceive: (params: ChangeEventPayload) => void;
+  // onMessageReceive: (params: ChangeEventPayload) => void;
 }
 
 class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {

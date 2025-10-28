@@ -33,10 +33,6 @@ export type ChangeEventPayload = {
 
 // These are the react functions we can call from native code
 export type MeshPeerModuleEvents = {
-  // Legacy event for backward compatibility
-  onMessageReceive: (params: ChangeEventPayload) => void;
-  
-  // New Nearby Connections events
   onPeerDiscovered: (params: PeerInfo) => void;
   onPeerConnected: (params: PeerConnectedPayload) => void;
   onPeerDisconnected: (params: PeerDisconnectedPayload) => void;

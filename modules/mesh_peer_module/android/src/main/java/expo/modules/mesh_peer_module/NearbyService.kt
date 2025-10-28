@@ -1,5 +1,7 @@
 package expo.modules.mesh_peer_module
 
+import android.app.Notification
+import android.app.PendingIntent
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -9,6 +11,8 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.nearby.Nearby
+
+
 
 class NearbyService : Service() {
 
@@ -21,8 +25,29 @@ class NearbyService : Service() {
         createNotificationChannel()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(intent: Intent?, startFlags: Int, startId: Int): Int {
         Log.d(TAG, "NearbyService onStartCommand() called")
+
+        // Make the app open when clicked
+        // val openAppIntent: Intent = Intent(this, com.anonymous.cruisechat.MainActivity::class.java).apply {
+        //     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        // }
+        // val pendingIntent: PendingIntent = PendingIntent.getActivity(
+        //     this, 0, openAppIntent,
+        //     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        // )
+
+        // Tried to make the notification persistant
+        // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        //     val channel = NotificationChannel(
+        //         CHANNEL_ID,
+        //         "Persistent Service Channel",
+        //         NotificationManager.IMPORTANCE_LOW
+        //     )
+        //     val manager = getSystemService(NotificationManager::class.java)
+        //     manager.createNotificationChannel(channel)
+        // }
+
         
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Nearby Connections")
@@ -33,6 +58,7 @@ class NearbyService : Service() {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setShowWhen(true)
             .setAutoCancel(false)
+            // .setContentIntent(pendingIntent) // Open app when clicked
             .build()
 
         try {

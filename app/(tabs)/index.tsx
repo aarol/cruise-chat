@@ -1,12 +1,13 @@
 import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity
-} from 'react-native';
+import
+  {
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity
+  } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
 import { addTextMessageToDb } from '@/database/services';
@@ -18,8 +19,9 @@ export default function TabOneScreen() {
   const [messages, setMessages] = useState<string[]>([])
   const [inputText, setInputText] = useState('')
   const [connectedPeers, setConnectedPeers] = useState<string[]>([])
-  const [isAdvertising, setIsAdvertising] = useState(false)
-  const [isDiscovering, setIsDiscovering] = useState(false)
+  const [isAdvertising, setIsAdvertising] = useState<false | true | 'pending'>(false)
+  const [isDiscovering, setIsDiscovering] = useState<false | true | 'pending'>(false)
+  const [serviceRunning, setServiceRunning] = useState(false) // Todo: query from module instead of storing this
   const [permissionsRequested, setPermissionsRequested] = useState(false)
 
   // ScrollView ref and auto-scroll state
@@ -34,25 +36,11 @@ export default function TabOneScreen() {
     setIsAtBottom(isBottom)
   }
 
-  // Function to scroll to bottom
   const scrollToBottom = () => {
     scrollViewRef.current?.scrollToEnd({ animated: true })
   }
 
-  // Many of these listeners are unnecessary and shouldn't broadcast to frontend
   useEffect(() => {
-
-    // Start the service
-    MeshPeerModule.startNearbyService().then(() => console.log('ok')).catch((err) => {
-      console.error('Failed to start service:', err);
-    }
-    );
-
-    // Legacy message listener
-    const messageSubscription = MeshPeerModule.addListener('onMessageReceive', (eventData) => {
-      console.log('Legacy message received:', eventData.value);
-      setMessages(messages => [...messages, `You: ${eventData.value}`]);
-    });
 
     // New Nearby Connections listeners
     const peerDiscoveredSubscription = MeshPeerModule.addListener('onPeerDiscovered', (peerInfo) => {
@@ -95,7 +83,6 @@ export default function TabOneScreen() {
     });
 
     return () => {
-      messageSubscription?.remove();
       peerDiscoveredSubscription?.remove();
       peerConnectedSubscription?.remove();
       peerDisconnectedSubscription?.remove();
@@ -128,38 +115,37 @@ export default function TabOneScreen() {
   };
 
   const startNearbyConnections = async () => {
-    try {
-      // First request permissions
-      const hasPermissions = await requestPermissions();
-      if (!hasPermissions) {
-        return;
-      }
-
-      await MeshPeerModule.startAdvertising();
-      await MeshPeerModule.startDiscovery();
-      setMessages(messages => [...messages, `🚢 CruiseChat started! Looking for nearby devices...`]);
-    } catch (error) {
-      console.error('Failed to start Nearby Connections:', error);
-      setMessages(messages => [...messages, `❌ Failed to start: ${error}`]);
-    }
+    startAdvertising()
+    startDiscovery()
   };
 
   const stopNearbyConnections = async () => {
-    try {
-      await MeshPeerModule.stopAdvertising();
-      await MeshPeerModule.stopDiscovery();
-      setIsAdvertising(false);
-      setIsDiscovering(false);
-      setMessages(messages => [...messages, `⏹️ Stopped advertising and discovery`]);
-    } catch (error) {
-      console.error('Failed to stop Nearby Connections:', error);
-    }
+    stopAdvertising()
+    stopDiscovery()
   };
+
+  const toggleService = async () => {
+    if (!serviceRunning)
+    {
+      MeshPeerModule.startNearbyService().then(() => console.log('ok')).catch((err) => {
+        console.error('Failed to start service:', err);
+      });
+      setServiceRunning(true)
+    }
+    else
+    {
+      MeshPeerModule.stopNearbyService().then(() => console.log('ok')).catch((err) => {
+        console.error('Failed to stop service:', err);
+      });
+      setServiceRunning(false)
+    }
+  }
 
   const startAdvertising = async () => {
     try {
       const hasPermissions = await requestPermissions();
       if (!hasPermissions) return;
+      setIsAdvertising('pending');
       await MeshPeerModule.startAdvertising();
     } catch (error) {
       setMessages(messages => [...messages, `❌ Failed to start advertising: ${error}`]);
@@ -179,6 +165,7 @@ export default function TabOneScreen() {
     try {
       const hasPermissions = await requestPermissions();
       if (!hasPermissions) return;
+      setIsDiscovering('pending');
       await MeshPeerModule.startDiscovery();
     } catch (error) {
       setMessages(messages => [...messages, `❌ Failed to start discovery: ${error}`]);
@@ -252,25 +239,30 @@ export default function TabOneScreen() {
             <>
               <View style={styles.buttonRow}>
                 <TouchableOpacity
-                  style={[styles.debugButton, isAdvertising && styles.activeButton]}
-                  onPress={isAdvertising ? stopAdvertising : startAdvertising}
+                  style={[
+                    styles.debugButton, 
+                    (isAdvertising === true || isDiscovering === true) && styles.activeButton,
+                    (isAdvertising === 'pending' || isDiscovering === 'pending') && styles.pendingButton
+                  ]}
+                  onPress={(isAdvertising || isDiscovering) ? stopNearbyConnections : startNearbyConnections}
+                  disabled={isAdvertising=='pending' || isDiscovering=='pending'}
                 >
                   <Text style={styles.debugButtonText}>
-                    {isAdvertising ? '📡 Stop' : '📡 Broadcast'}
+                    {(isAdvertising || isDiscovering) ? '📡 Stop' : '📡 Find'}
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.debugButton, isDiscovering && styles.activeButton]}
-                  onPress={isDiscovering ? stopDiscovery : startDiscovery}
+                  style={[styles.debugButton, serviceRunning && styles.activeButton]}
+                  onPress={toggleService}
                 >
                   <Text style={styles.debugButtonText}>
-                    {isDiscovering ? '🔍 Stop' : '🔍 Discover'}
+                    {!serviceRunning ? 'Start service' : 'Stop service'}
                   </Text>
                 </TouchableOpacity>
               </View>
               <Text style={styles.statusText}>
-                Connected: {connectedPeers.length} • {isAdvertising ? 'Broadcasting' : isDiscovering ? 'Discovering' : 'Idle'}
+                Connected: {connectedPeers.length} • {(isAdvertising=='pending') ? 'Waiting...' : isDiscovering ? 'Discovering' : 'Idle'}
               </Text>
             </>
           )}
@@ -402,6 +394,9 @@ const styles = StyleSheet.create({
   },
   activeButton: {
     backgroundColor: '#4CAF50',
+  },
+  pendingButton: {
+    backgroundColor: '#888',
   },
   controlButtonText: {
     color: '#fff',
