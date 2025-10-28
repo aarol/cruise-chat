@@ -5,17 +5,19 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
+  ToastAndroid,
   TouchableOpacity
 } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
-import { addTextMessageToDb, getMessages } from '@/database/services';
+import { Message } from '@/database/schema';
+import { addMessage, getMessages } from '@/database/services';
 import { useEffect, useRef, useState } from 'react';
 
 export default function TabOneScreen() {
 
   // Replace with a better data structure down the line
-  const [messages, setMessages] = useState<string[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const [connectedPeers, setConnectedPeers] = useState<string[]>([])
   const [isAdvertising, setIsAdvertising] = useState<false | true | 'pending'>(false)
@@ -48,14 +50,14 @@ export default function TabOneScreen() {
 
     const peerConnectedSubscription = MeshPeerModule.addListener('onPeerConnected', (data) => {
       console.log('Peer connected:', data.endpointId);
-      setMessages(messages => [...messages, `✅ Connected to peer`]);
+      ToastAndroid.show('✅ Connected to peer', ToastAndroid.SHORT);
       // Refresh connected peers list
       MeshPeerModule.getConnectedPeers().then(setConnectedPeers);
     });
 
     const peerDisconnectedSubscription = MeshPeerModule.addListener('onPeerDisconnected', (data) => {
       console.log('Peer disconnected:', data.endpointId);
-      setMessages(messages => [...messages, `❌ Peer disconnected`]);
+      ToastAndroid.show(`❌ Peer disconnected`, ToastAndroid.SHORT);
       MeshPeerModule.getConnectedPeers().then(setConnectedPeers);
     });
 
@@ -71,7 +73,7 @@ export default function TabOneScreen() {
     });
     const errorMessagesSubscription = MeshPeerModule.addListener('onError', (data) => {
       console.log('Error:', data.error);
-      setMessages(messages => [...messages, "Error: " + data.error]);
+      ToastAndroid.show(`❌ Error: ${data.error}`, ToastAndroid.LONG);
     });
 
     setMessagesFromDb();
@@ -100,7 +102,7 @@ export default function TabOneScreen() {
       return true;
     } catch (error) {
       console.error('Permission request failed:', error);
-      setMessages(messages => [...messages, `❌ Permission error: ${error}`]);
+      ToastAndroid.show(`❌ Permission request failed: ${error}`, ToastAndroid.LONG);
       setPermissionsRequested(true); // Still show buttons even if permissions failed
       return false;
     }
@@ -109,8 +111,7 @@ export default function TabOneScreen() {
 
   const setMessagesFromDb = async () => {
     getMessages().then(dbMessages => {
-      console.log(dbMessages.map(m => m.content))
-        setMessages(dbMessages.map(msg => `📱 ${msg.content}`));
+      setMessages(dbMessages);
     });
   }
 
@@ -147,7 +148,7 @@ export default function TabOneScreen() {
       setIsDiscovering(true);
 
     } catch (error) {
-      setMessages(messages => [...messages, `❌ Failed to start discovery: ${error}`]);
+      ToastAndroid.show(`❌ Failed to start discovery: ${error}`, ToastAndroid.LONG);
     }
   };
 
@@ -156,24 +157,24 @@ export default function TabOneScreen() {
       await MeshPeerModule.stopDiscovery();
       setIsDiscovering(false)
     } catch (error) {
-      setMessages(messages => [...messages, `❌ Failed to stop discovery: ${error}`]);
+      ToastAndroid.show(`❌ Failed to stop discovery: ${error}`, ToastAndroid.LONG);
     }
   };
 
   const sendMessage = async () => {
 
-    await addTextMessageToDb(inputText.trim(), 'local-user');
+    const newMessage = await addMessage(inputText.trim(), 'local-user', "global-chat"); // TODO: replace with actual values
 
     if (inputText.trim()) {
       try {
-        await MeshPeerModule.sendMessage(inputText);
-        setMessages(messages => [...messages, `You: ${inputText}`]);
+        await MeshPeerModule.sendMessage(newMessage.id, newMessage.content, newMessage.userId, newMessage.createdAt.getTime() * 1000);
+        setMessages(messages => [...messages, newMessage]);
         setInputText('');
         // Always scroll to bottom when user sends a message
         setTimeout(() => { scrollToBottom() }, 5)
       } catch (error) {
         console.error('Failed to send message:', error);
-        setMessages(messages => [...messages, `❌ Failed to send message`]);
+        ToastAndroid.show(`❌ Failed to send message: ${error}`, ToastAndroid.LONG);
       }
     }
   }
@@ -197,8 +198,8 @@ export default function TabOneScreen() {
           scrollEventThrottle={16}
         >
           {messages.map((message, index) => (
-            <Text key={index} style={styles.messageText}>
-              {message}
+            <Text key={message.id} style={styles.messageText}>
+              {message.userId}: {message.content}
             </Text>
           ))}
         </ScrollView>

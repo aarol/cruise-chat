@@ -7,7 +7,7 @@ import { type Message, messages, type NewMessage } from './schema';
  * @param messageData - The message data to insert
  * @returns Promise<string> - The ID of the inserted message
  */
-export const addMessage = async (message: string, userId: string): Promise<string> => {
+export const addMessage = async (message: string, userId: string, chatId: string): Promise<Message> => {
 
   const messageId = nanoid(12);
 
@@ -15,25 +15,16 @@ export const addMessage = async (message: string, userId: string): Promise<strin
     id: messageId,
     content: message,
     userId,
+    chatId,
   };
 
   try {
-    await db.insert(messages).values(newMessage);
-    return messageId;
+    const msg = await db.insert(messages).values(newMessage).returning();
+    return msg[0];
   } catch (error) {
     console.error('Error adding message to database:', error);
     throw new Error(`Failed to add message: ${error}`);
   }
-};
-
-/**
- * Adds a text message to the database
- * @param content - The text content of the message
- * @param userId - The ID of the user sending the message
- * @returns Promise<string> - The ID of the inserted message
- */
-export const addTextMessageToDb = async (content: string, userId: string): Promise<string> => {
-  return addMessage(content, userId);
 };
 
 export const getMessageIds = async (): Promise<string[]> => {

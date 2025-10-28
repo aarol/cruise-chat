@@ -5,8 +5,9 @@ export const messages = sqliteTable('messages', {
   id: text('id').primaryKey(),
   content: text('content').notNull(),
   userId: text('user_id').notNull(),
-  sent_to_peers: integer({mode: "boolean"}).notNull().default(false),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+  sentToPeers: integer({mode: "boolean"}).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
+  chatId: text("chat_id").notNull(),
 });
 
 export type Message = typeof messages.$inferSelect;
