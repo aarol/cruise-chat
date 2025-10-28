@@ -1,13 +1,12 @@
 import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
-import
-  {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity
-  } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity
+} from 'react-native';
 
 import { Text, View } from '@/components/Themed';
 import { addTextMessageToDb, getMessages } from '@/database/services';
@@ -66,11 +65,6 @@ export default function TabOneScreen() {
       setMessagesFromDb();
     });
 
-    const messageReceivedSubscription = MeshPeerModule.addListener('onMessageReceived', (data) => {
-      console.log('Nearby message received:', data);
-      setMessages(messages => [...messages, `📱 ${data.message}`]);
-    });
-
     const debugMessagesSubscription = MeshPeerModule.addListener('onDebug', (data) => {
       console.log('Native debug:', data.message);
       // setMessages(messages => [...messages, data.message]);
@@ -86,7 +80,6 @@ export default function TabOneScreen() {
       peerDiscoveredSubscription?.remove();
       peerConnectedSubscription?.remove();
       peerDisconnectedSubscription?.remove();
-      messageReceivedSubscription?.remove();
       debugMessagesSubscription?.remove();
       errorMessagesSubscription?.remove();
       newMessagesSubscription?.remove();
@@ -116,6 +109,7 @@ export default function TabOneScreen() {
 
   const setMessagesFromDb = async () => {
     getMessages().then(dbMessages => {
+      console.log(dbMessages.map(m => m.content))
         setMessages(dbMessages.map(msg => `📱 ${msg.content}`));
     });
   }
@@ -142,28 +136,6 @@ export default function TabOneScreen() {
       setServiceRunning(false)
     }
   }
-
-  const startAdvertising = async () => {
-    try {
-      console.log('Requesting permissions');
-      const hasPermissions = await requestPermissions();
-      if (!hasPermissions) return;
-      setIsAdvertising('pending');
-      await MeshPeerModule.startAdvertising();
-      setIsAdvertising(true);
-    } catch (error) {
-      setMessages(messages => [...messages, `❌ Failed to start advertising: ${error}`]);
-    }
-  };
-
-  const stopAdvertising = async () => {
-    try {
-      await MeshPeerModule.stopAdvertising();
-      setIsAdvertising(false)
-    } catch (error) {
-      setMessages(messages => [...messages, `❌ Failed to stop advertising: ${error}`]);
-    }
-  };
 
   const startDiscovery = async () => {
     try {
