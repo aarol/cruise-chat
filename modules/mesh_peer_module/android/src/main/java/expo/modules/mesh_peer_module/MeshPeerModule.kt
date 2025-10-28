@@ -68,14 +68,6 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
     sendEvent("onDebug", mapOf("message" to message))
   }
 
-  // NearbyService.NearbyServiceListener implementation
-  override fun onPeerDiscovered(endpointId: String, name: String) {
-    sendEvent("onPeerDiscovered", mapOf(
-      "endpointId" to endpointId,
-      "name" to name
-    ))
-  }
-
   override fun onPeerConnected(endpointId: String) {
     DebugLog("Peer connected")
     sendEvent("onPeerConnected", mapOf("endpointId" to endpointId))
@@ -83,10 +75,6 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
 
   override fun onPeerDisconnected(endpointId: String) {
     sendEvent("onPeerDisconnected", mapOf("endpointId" to endpointId))
-  }
-
-  override fun onPeerLost(endpointId: String) {
-    sendEvent("onPeerLost", mapOf("endpointId" to endpointId))
   }
 
   override fun onMessageReceived(endpointId: String, message: String) {
@@ -163,25 +151,6 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       promise.resolve(true)
     }
 
-    AsyncFunction("startAdvertising") { promise: Promise ->
-      android.util.Log.d("MeshPeerModule", "startAdvertising called")
-      
-      if (!hasRequiredPermissions()) {
-      android.util.Log.w("MeshPeerModule", "startAdvertising failed: permissions not granted")
-      promise.reject("PERMISSION_DENIED", "Required permissions not granted", null)
-      return@AsyncFunction
-      }
-      
-      val success = nearbyService?.startAdvertising() ?: false
-      if (success) {
-      android.util.Log.d("MeshPeerModule", "startAdvertising succeeded")
-      promise.resolve(null)
-      } else {
-      android.util.Log.e("MeshPeerModule", "startAdvertising failed")
-      promise.reject("ADVERTISING_FAILED", "Failed to start advertising", null)
-      }
-    }
-
     AsyncFunction("startDiscovery") { promise: Promise ->
       android.util.Log.d("MeshPeerModule", "startDiscovery called")
       
@@ -191,7 +160,7 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
         return@AsyncFunction
       }
 
-      val success = nearbyService?.startDiscovery() ?: false
+      val success: Boolean = nearbyService?.startFindConnections() ?: false
       if (success) {
         android.util.Log.d("MeshPeerModule", "startDiscovery succeeded")
         promise.resolve(null)
@@ -201,13 +170,8 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       }
     }
 
-    AsyncFunction("stopAdvertising") { promise: Promise ->
-      nearbyService?.stopAdvertising()
-      promise.resolve(null)
-    }
-
     AsyncFunction("stopDiscovery") { promise: Promise ->
-      nearbyService?.stopDiscovery()
+      nearbyService?.stopFindConnections()
       promise.resolve(null)
     }
 
@@ -230,17 +194,17 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
     }
 
     AsyncFunction("getConnectedPeers") { promise: Promise ->
-      val peers = nearbyService?.getConnectedPeers() ?: emptyList()
+      val peers = nearbyService?.connectionHandler?.getConnectedPeers() ?: emptyList()
       promise.resolve(peers)
     }
 
     AsyncFunction("disconnectFromPeer") { endpointId: String, promise: Promise ->
-      nearbyService?.disconnectFromPeer(endpointId)
+      nearbyService?.connectionHandler?.disconnectFromPeer(endpointId)
       promise.resolve(null)
     }
 
     AsyncFunction("disconnectFromAllPeers") { promise: Promise ->
-      nearbyService?.disconnectFromAllPeers()
+      nearbyService?.connectionHandler?.disconnectFromAllPeers()
       promise.resolve(null)
     }
 

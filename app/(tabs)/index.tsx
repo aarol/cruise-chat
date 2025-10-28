@@ -1,12 +1,13 @@
 import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity
-} from 'react-native';
+import
+  {
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity
+  } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
 import { addTextMessageToDb, getMessages } from '@/database/services';
@@ -120,12 +121,10 @@ export default function TabOneScreen() {
   }
 
   const startNearbyConnections = async () => {
-    startAdvertising()
     startDiscovery()
   };
 
   const stopNearbyConnections = async () => {
-    stopAdvertising()
     stopDiscovery()
   };
 

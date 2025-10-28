@@ -10,9 +10,7 @@ declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   checkPermissions(): Promise<{granted: boolean}>;
   
   // New Nearby Connections functions
-  startAdvertising(): Promise<void>;
   startDiscovery(): Promise<void>;
-  stopAdvertising(): Promise<void>;
   stopDiscovery(): Promise<void>;
   startNearbyService(): Promise<void>;
   stopNearbyService(): Promise<void>;

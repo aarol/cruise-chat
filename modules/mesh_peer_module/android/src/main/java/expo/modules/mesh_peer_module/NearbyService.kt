@@ -25,7 +25,7 @@ import java.util.UUID
 import org.json.JSONObject
 import org.json.JSONArray
 
-class NearbyService : Service() {
+class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
     private val CHANNEL_ID = "nearby_service_channel"
     private val TAG = "NearbyService"
@@ -36,26 +36,23 @@ class NearbyService : Service() {
     private val MSG_TYPE_MESSAGE_BATCH = "message_batch"
     private val MSG_TYPE_CHAT_MESSAGE = "chat_message"
     
-    private lateinit var connectionsClient: ConnectionsClient
-    private val connectedEndpoints = mutableSetOf<String>()
-    private val strategy = Strategy.P2P_CLUSTER
     private val binder = LocalBinder()
-    
-    // Persistent database connection
-    private var database: SQLiteDatabase? = null
-    
-    // Callback to notify the module about events
+
     interface NearbyServiceListener {
-        fun onPeerDiscovered(endpointId: String, name: String)
         fun onPeerConnected(endpointId: String)
         fun onPeerDisconnected(endpointId: String)
-        fun onPeerLost(endpointId: String)
-        fun onMessageReceived(endpointId: String, message: String)
         fun onConnectionFailed(endpointId: String, error: String)
+
         fun onNewMessages(count: Int, totalMessages: Int)
+        fun onMessageReceived(endpointId: String, message: String)
     }
     
     private var listener: NearbyServiceListener? = null
+    
+    // Persistent database connection
+    private var database: SQLiteDatabase? = null
+    public var connectionHandler: ConnectionHandler = ConnectionHandler()
+    
     
     inner class LocalBinder : Binder() {
         fun getService(): NearbyService = this@NearbyService
@@ -66,7 +63,8 @@ class NearbyService : Service() {
         Log.d(TAG, "NearbyService onCreate() called")
         initializeDatabase()
         createNotificationChannel()
-        connectionsClient = Nearby.getConnectionsClient(this)
+        connectionHandler.setListener(this@NearbyService)
+        connectionHandler.Init(this)
     }
 
     override fun onStartCommand(intent: Intent?, startFlags: Int, startId: Int): Int {
@@ -100,218 +98,65 @@ class NearbyService : Service() {
         return START_STICKY
     }
 
+    public fun startFindConnections(): Boolean {
+        val res1: Boolean = connectionHandler.startDiscovery()
+        val res2: Boolean = connectionHandler.startAdvertising()
+        return res1 && res2
+    }
+    public fun stopFindConnections(): Boolean {
+        val res1: Boolean = connectionHandler.stopDiscovery()
+        val res2: Boolean = connectionHandler.stopAdvertising()
+        return res1 && res2
+    }
+
     fun setListener(listener: NearbyServiceListener?) {
         this.listener = listener
     }
     
-    fun startAdvertising(): Boolean {
-        val advertisingOptions = AdvertisingOptions.Builder().setStrategy(strategy).build()
-        return try {
-            connectionsClient.startAdvertising(
-                "CruiseChat_${android.os.Build.MODEL}",
-                "CruiseChat",
-                connectionLifecycleCallback,
-                advertisingOptions
-            )
-            Log.d(TAG, "Starting advertising")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start advertising: ${e.message}")
-            false
-        }
+    override fun onPeerConnected(endpointId: String) {
+        // Initiate message synchronization by sending our known message IDs
+        initiateSyncWithPeer(endpointId)
+        listener?.onPeerConnected(endpointId)
     }
-    
-    fun startDiscovery(): Boolean {
-        val discoveryOptions = DiscoveryOptions.Builder().setStrategy(strategy).build()
-        return try {
-            connectionsClient.startDiscovery(
-                "CruiseChat",
-                endpointDiscoveryCallback,
-                discoveryOptions
-            )
-            Log.d(TAG, "Starting discovery")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start discovery: ${e.message}")
-            false
-        }
+    override fun onPeerDisconnected(endpointId: String) {
+        listener?.onPeerDisconnected(endpointId)
     }
-    
-    fun stopAdvertising() {
-        Log.d(TAG, "stop advertising")
-        connectionsClient.stopAdvertising()
-    }
-    
-    fun stopDiscovery() {
-        Log.d(TAG, "stop discovery")
-        connectionsClient.stopDiscovery()
-    }
-    
-    fun sendMessage(endpointId: String, message: String): Boolean {
-        Log.d(TAG, "Sending message")
-        return if (connectedEndpoints.contains(endpointId)) {
-            try {
-                val chatMessage = JSONObject().apply {
-                    put("type", MSG_TYPE_CHAT_MESSAGE)
-                    put("content", message)
-                }
-                val payload = Payload.fromBytes(chatMessage.toString().toByteArray(StandardCharsets.UTF_8))
-                connectionsClient.sendPayload(endpointId, payload)
-                true
-            } catch (e: Exception) {
-                Log.e(TAG, "Error sending message to $endpointId: ${e.message}")
-                false
-            }
-        } else {
-            false
-        }
-    }
-    
-    fun broadcastMessage(message: String): Boolean {
-        return try {
-            val chatMessage = JSONObject().apply {
-                put("type", MSG_TYPE_CHAT_MESSAGE)
-                put("content", message)
-            }
-            val payload = Payload.fromBytes(chatMessage.toString().toByteArray(StandardCharsets.UTF_8))
-            connectedEndpoints.forEach { endpointId ->
-                connectionsClient.sendPayload(endpointId, payload)
-            }
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error broadcasting message: ${e.message}")
-            false
-        }
-    }
-    
-    fun getConnectedPeers(): List<String> = connectedEndpoints.toList()
-    
-    fun disconnectFromPeer(endpointId: String) {
-        connectionsClient.disconnectFromEndpoint(endpointId)
-        connectedEndpoints.remove(endpointId)
-    }
-    
-    fun disconnectFromAllPeers() {
-        connectionsClient.stopAllEndpoints()
-        connectedEndpoints.clear()
+    override fun onConnectionFailed(endpointId: String, error: String) {
+        listener?.onConnectionFailed(endpointId, error)
     }
 
-    /**
-     * Connection lifecycle callback that handles the message synchronization flow between peers.
-     * 
-     * Message Sync Protocol Flow:
-     * 1. When a connection is established (STATUS_OK), each peer sends a sync_request containing
-     *    their list of known message IDs to the other peer
-     * 2. Upon receiving a sync_request, each peer compares the received message IDs with their
-     *    local database and identifies missing messages  
-     * 3. Each peer sends a sync_response containing the IDs of messages they want to receive
-     * 4. Upon receiving a sync_response, each peer sends a message_batch containing the full
-     *    message data for all requested message IDs
-     * 5. Received messages are stored in the local database and normal chat operation continues
-     * 6. Regular chat_message types are handled as before for real-time messaging
-     * 
-     * This ensures that when two devices connect, they automatically sync their message history
-     * and both peers end up with a complete view of all messages exchanged in the mesh network.
-     */
-    private val connectionLifecycleCallback = object : ConnectionLifecycleCallback() {
-        override fun onConnectionInitiated(endpointId: String, connectionInfo: ConnectionInfo) {
-            Log.d(TAG, "Connection initiated")
-            connectionsClient.acceptConnection(endpointId, payloadCallback)
-        }
-
-        override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
-            Log.d(TAG, "Connection made with code " + result.status.statusCode)
-            when (result.status.statusCode) {
-                ConnectionsStatusCodes.STATUS_OK -> {
-                    Log.d(TAG, "Setup init 1")
-                    Log.d(TAG, "" + (connectedEndpoints == null))
-                    Log.d(TAG, "" + (connectedEndpoints))
-                    Log.d(TAG, "" + (listener))
-                    connectedEndpoints.add(endpointId)
-                    Log.d(TAG, "middle")
-                    listener?.onPeerConnected(endpointId)
+    override fun onPayloadReceived(endpointId: String, payload: Payload) {
+        Log.d(TAG, "Got some load")
+        when (payload.type) {
+            Payload.Type.BYTES -> {
+                val messageData = String(payload.asBytes()!!, StandardCharsets.UTF_8)
+                
+                try {
+                    val jsonMessage = JSONObject(messageData)
+                    val messageType = jsonMessage.getString("type")
                     
-                    Log.d(TAG, "Setup init 2")
-                    // Initiate message synchronization by sending our known message IDs
-                    initiateSyncWithPeer(endpointId)
-                }
-                ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED -> {
-                    listener?.onConnectionFailed(endpointId, "Connection rejected")
-                }
-                else -> {
-                    Log.d(TAG, "Connection made, but it errored.")
-                    listener?.onConnectionFailed(endpointId, "Connection failed with status: ${result.status.statusCode}")
-                }
-            }
-        }
-
-        override fun onDisconnected(endpointId: String) {
-            connectedEndpoints.remove(endpointId)
-            listener?.onPeerDisconnected(endpointId)
-        }
-    }
-
-    private val payloadCallback = object : PayloadCallback() {
-        override fun onPayloadReceived(endpointId: String, payload: Payload) {
-            Log.d(TAG, "Got some load")
-            when (payload.type) {
-                Payload.Type.BYTES -> {
-                    val messageData = String(payload.asBytes()!!, StandardCharsets.UTF_8)
-                    
-                    try {
-                        val jsonMessage = JSONObject(messageData)
-                        val messageType = jsonMessage.getString("type")
-                        
-                        when (messageType) {
-                            MSG_TYPE_SYNC_REQUEST -> handleSyncRequest(endpointId, jsonMessage)
-                            MSG_TYPE_SYNC_RESPONSE -> handleSyncResponse(endpointId, jsonMessage)
-                            MSG_TYPE_MESSAGE_BATCH -> handleMessageBatch(endpointId, jsonMessage)
-                            MSG_TYPE_CHAT_MESSAGE -> {
-                                val content = jsonMessage.getString("content")
-                                // Store message in SQLite database
-                                storeMessage(content, endpointId)
-                                // Notify listener
-                                listener?.onMessageReceived(endpointId, content)
-                            }
+                    when (messageType) {
+                        MSG_TYPE_SYNC_REQUEST -> handleSyncRequest(endpointId, jsonMessage)
+                        MSG_TYPE_SYNC_RESPONSE -> handleSyncResponse(endpointId, jsonMessage)
+                        MSG_TYPE_MESSAGE_BATCH -> handleMessageBatch(endpointId, jsonMessage)
+                        MSG_TYPE_CHAT_MESSAGE -> {
+                            val content = jsonMessage.getString("content")
+                            // Store message in SQLite database
+                            storeMessage(content, endpointId)
+                            // Notify listener
+                            listener?.onMessageReceived(endpointId, content)
                         }
-                    } catch (e: Exception) {
-                        // If JSON parsing fails, treat as regular chat message for backward compatibility
-                        Log.w(TAG, "Failed to parse message as JSON, treating as plain text: ${e.message}")
-                        storeMessage(messageData, endpointId)
-                        listener?.onMessageReceived(endpointId, messageData)
                     }
+                } catch (e: Exception) {
+                    // If JSON parsing fails, treat as regular chat message for backward compatibility
+                    Log.w(TAG, "Failed to parse message as JSON, treating as plain text: ${e.message}")
+                    storeMessage(messageData, endpointId)
+                    listener?.onMessageReceived(endpointId, messageData)
                 }
             }
         }
-
-        override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {
-            // Handle payload transfer updates if needed
-        }
     }
 
-    private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
-        override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
-            Log.d(TAG, "Endpoint foudn!!!!. We send: ${"CruiseChat_${Build.MODEL}" < info.endpointName}")
-            if ("CruiseChat_${Build.MODEL}" < info.endpointName) {
-                connectionsClient.requestConnection(
-                    "CruiseChat_${android.os.Build.MODEL}",
-                    endpointId,
-                    connectionLifecycleCallback
-                ).addOnSuccessListener {
-                    Log.d(TAG, "Connection successful")
-                }.addOnFailureListener { exception ->
-                    Log.d(TAG, "❌ Connection failed: ${exception.message}")
-                }
-            }
-            
-            listener?.onPeerDiscovered(endpointId, info.endpointName)
-        }
-
-        override fun onEndpointLost(endpointId: String) {
-            listener?.onPeerLost(endpointId)
-        }
-    }
-    
     private fun initializeDatabase() {
         try {
             val dbPath = getDatabasePath()
@@ -360,6 +205,38 @@ class NearbyService : Service() {
     
     private fun getDatabasePath(): String {
         return File(filesDir, "SQLite/cruise-chat.db").absolutePath
+    }
+
+    fun sendMessage(endpointId: String, message: String): Boolean {
+        Log.d(TAG, "Sending message")
+        try {
+            val chatMessage = JSONObject().apply {
+                put("type", MSG_TYPE_CHAT_MESSAGE)
+                put("content", message)
+            }
+            val payload = Payload.fromBytes(chatMessage.toString().toByteArray(StandardCharsets.UTF_8))
+            connectionHandler.sendPayload(endpointId, payload)
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending message to $endpointId: ${e.message}")
+            return false
+        }
+        return true;
+    }
+    
+    fun broadcastMessage(message: String): Boolean {
+        return try {
+            val chatMessage = JSONObject().apply {
+                put("type", MSG_TYPE_CHAT_MESSAGE)
+                put("content", message)
+            }
+            val payload = Payload.fromBytes(chatMessage.toString().toByteArray(StandardCharsets.UTF_8))
+            connectionHandler.sendPayloads(payload)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error broadcasting message: ${e.message}")
+            false
+        }
     }
     
     fun getAllMessageIds(): List<String> {
@@ -434,7 +311,7 @@ class NearbyService : Service() {
             }
             
             val payload = Payload.fromBytes(syncRequest.toString().toByteArray(StandardCharsets.UTF_8))
-            connectionsClient.sendPayload(endpointId, payload)
+            connectionHandler.sendPayload(endpointId, payload)
             
             Log.d(TAG, "Sent sync request to $endpointId with ${knownMessageIds.size} known message IDs")
         } catch (e: Exception) {
@@ -464,7 +341,7 @@ class NearbyService : Service() {
             }
             
             val payload = Payload.fromBytes(syncResponse.toString().toByteArray(StandardCharsets.UTF_8))
-            connectionsClient.sendPayload(endpointId, payload)
+            connectionHandler.sendPayload(endpointId, payload)
             
             // Also send messages that the peer doesn't have
             val messagesToSend = localMessageIds - receivedIds
@@ -535,7 +412,7 @@ class NearbyService : Service() {
             }
             
             val payload = Payload.fromBytes(messageBatch.toString().toByteArray(StandardCharsets.UTF_8))
-            connectionsClient.sendPayload(endpointId, payload)
+            connectionHandler.sendPayload(endpointId, payload)
             
             Log.d(TAG, "Sent message batch to $endpointId with ${messages.length()} messages")
         } catch (e: Exception) {
@@ -631,9 +508,9 @@ class NearbyService : Service() {
     
     override fun onDestroy() {
         super.onDestroy()
-        disconnectFromAllPeers()
-        stopAdvertising()
-        stopDiscovery()
+        connectionHandler.disconnectFromAllPeers()
+        connectionHandler.stopAdvertising()
+        connectionHandler.stopDiscovery()
         closeDatabase()
         Log.d(TAG, "NearbyService destroyed")
     }
