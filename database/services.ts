@@ -39,7 +39,7 @@ export const getMessageIds = async (): Promise<string[]> => {
 
 export const getMessages = async (): Promise<Message[]> => {
   try {
-    return await db.select().from(messages);
+    return await db.select().from(messages).orderBy(messages.createdAt);
   } catch (error) {
     console.error('Error fetching messages:', error);
     throw new Error(`Failed to get messages: ${error}`);
