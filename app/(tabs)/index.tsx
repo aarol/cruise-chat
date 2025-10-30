@@ -1,46 +1,42 @@
 import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
 import
   {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
     StyleSheet,
-    TextInput,
     ToastAndroid,
     TouchableOpacity
   } from 'react-native';
 
+import ChatWindow from '@/components/ChatWindow';
 import { Text, View } from '@/components/Themed';
-import { Message } from '@/database/schema';
-import { addMessage, getMessages } from '@/database/services';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 
 export default function TabOneScreen() {
-
-  // Replace with a better data structure down the line
-  const [messages, setMessages] = useState<Message[]>([])
-  const [inputText, setInputText] = useState('')
+  const router = useRouter();
   const [connectedPeers, setConnectedPeers] = useState<string[]>([])
-  const [isAdvertising, setIsAdvertising] = useState<false | true | 'pending'>(false)
   const [isDiscovering, setIsDiscovering] = useState<false | true | 'pending'>(false)
   const [serviceRunning, setServiceRunning] = useState(false) // Todo: query from module instead of storing this
-  const [permissionsRequested, setPermissionsRequested] = useState(false)
+  const [username, setUsername] = useState<string | null>(null)
 
-  // ScrollView ref and auto-scroll state
-  const scrollViewRef = useRef<ScrollView>(null)
-  const [isAtBottom, setIsAtBottom] = useState(true)
+  useEffect(() => {
+    checkUsername();
+  }, []);
 
-  // Function to check if user is at bottom of scroll
-  const handleScroll = (event: any) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent
-    const paddingToBottom = 20
-    const isBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom
-    setIsAtBottom(isBottom)
-  }
-
-  const scrollToBottom = () => {
-    scrollViewRef.current?.scrollToEnd({ animated: true })
-  }
+  const checkUsername = async () => {
+    try {
+      const storedUsername = await MeshPeerModule.getUsername();
+      
+      if (!storedUsername) {
+        router.push('/Welcome');
+      } else {
+        setUsername(storedUsername);
+      }
+    } catch (error) {
+      console.error('Failed to check username:', error);
+      // If there's an error, show the modal anyway
+      router.push('/Welcome');
+    }
+  };
 
   useEffect(() => {
 
@@ -62,22 +58,13 @@ export default function TabOneScreen() {
       MeshPeerModule.getConnectedPeers().then(setConnectedPeers);
     });
 
-    const newMessagesSubscription = MeshPeerModule.addListener('onNewMessages', (data) => {
-      console.log(`${data.count} new messages received! Total messages: ${data.totalMessages}`);
-      console.log(`Reading messages from database...`);
-      setMessagesFromDb();
-    });
-
     const debugMessagesSubscription = MeshPeerModule.addListener('onDebug', (data) => {
       console.log('Native debug:', data.message);
-      // setMessages(messages => [...messages, data.message]);
     });
     const errorMessagesSubscription = MeshPeerModule.addListener('onError', (data) => {
       console.log('Error:', data.error);
       ToastAndroid.show(`❌ Error: ${data.error}`, ToastAndroid.LONG);
     });
-
-    setMessagesFromDb();
 
     return () => {
       peerDiscoveredSubscription?.remove();
@@ -85,36 +72,19 @@ export default function TabOneScreen() {
       peerDisconnectedSubscription?.remove();
       debugMessagesSubscription?.remove();
       errorMessagesSubscription?.remove();
-      newMessagesSubscription?.remove();
     };
   }, [])
-
-  // Auto-scroll to bottom when new messages arrive (if user was already at bottom)
-  useEffect(() => {
-    if (isAtBottom && messages.length > 0) {
-      setTimeout(() => { scrollToBottom() }, 5)
-    }
-  }, [messages, isAtBottom])
 
   const requestPermissions = async () => {
     try {
       await MeshPeerModule.requestPermissions()
-      setPermissionsRequested(true);
       return true;
     } catch (error) {
       console.error('Permission request failed:', error);
       ToastAndroid.show(`❌ Permission request failed: ${error}`, ToastAndroid.LONG);
-      setPermissionsRequested(true); // Still show buttons even if permissions failed
       return false;
     }
   };
-
-
-  const setMessagesFromDb = async () => {
-    getMessages().then(dbMessages => {
-      setMessages(dbMessages);
-    });
-  }
 
   const startNearbyConnections = async () => {
     startDiscovery()
@@ -163,113 +133,44 @@ export default function TabOneScreen() {
     }
   };
 
-  const sendMessage = async () => {
-
-    const newMessage = await addMessage(inputText.trim(), 'local-user', "global-chat"); // TODO: replace with actual values
-
-    if (inputText.trim()) {
-      try {
-        console.log("Sending a message through backend")
-        await MeshPeerModule.sendMessage(newMessage.id, newMessage.content, newMessage.userId, newMessage.createdAt.getTime() * 1000, newMessage.chatId);
-        setMessages(messages => [...messages, newMessage]);
-        setInputText('');
-        // Always scroll to bottom when user sends a message
-        setTimeout(() => { scrollToBottom() }, 5)
-      } catch (error) {
-        console.error('Failed to send message:', error);
-        ToastAndroid.show(`❌ Failed to send message: ${error}`, ToastAndroid.LONG);
-      }
-    }
-  }
-
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 100}
-    >
-      <View style={styles.inner}>
-        {/* Messages list */}
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={true}
-          keyboardShouldPersistTaps="handled"
-          scrollEnabled={true}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-        >
-          {messages.map((message, index) => (
-            <Text key={message.id} style={styles.messageText}>
-              {message.userId}: {message.content}
+    <View style={styles.container}>
+      <ChatWindow 
+        username={username} 
+        emptyStateMessage="If you are on the cruise we could see messages soon"
+      />
+
+      {/* Control buttons */}
+      <View style={styles.controlsContainer}>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[
+              styles.debugButton,
+              (isDiscovering === true) && styles.activeButton,
+              (isDiscovering === 'pending') && styles.pendingButton
+            ]}
+            onPress={(isDiscovering) ? stopNearbyConnections : startNearbyConnections}
+            disabled={isDiscovering == 'pending'}
+          >
+            <Text style={styles.debugButtonText}>
+              {(isDiscovering) ? '📡 Stop' : '📡 Find'}
             </Text>
-          ))}
-        </ScrollView>
+          </TouchableOpacity>
 
-        {/* Control buttons */}
-        <View style={styles.controlsContainer}>
-          {!permissionsRequested ? (
-            <TouchableOpacity
-              style={styles.permissionButton}
-              onPress={requestPermissions}
-            >
-              <Text style={styles.permissionButtonText}>
-                🔐 Request Permissions
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <>
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.debugButton,
-                    (isAdvertising === true || isDiscovering === true) && styles.activeButton,
-                    (isAdvertising === 'pending' || isDiscovering === 'pending') && styles.pendingButton
-                  ]}
-                  onPress={(isAdvertising || isDiscovering) ? stopNearbyConnections : startNearbyConnections}
-                  disabled={isAdvertising == 'pending' || isDiscovering == 'pending'}
-                >
-                  <Text style={styles.debugButtonText}>
-                    {(isAdvertising || isDiscovering) ? '📡 Stop' : '📡 Find'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.debugButton, serviceRunning && styles.activeButton]}
-                  onPress={toggleService}
-                >
-                  <Text style={styles.debugButtonText}>
-                    {!serviceRunning ? 'Start service' : 'Stop service'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.statusText}>
-                Connected: {connectedPeers.length} • {(isAdvertising == 'pending') ? 'Waiting...' : isDiscovering ? 'Discovering' : 'Idle'}
-              </Text>
-            </>
-          )}
-        </View>
-
-        {/* Input area */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Type a message..."
-            placeholderTextColor="#888"
-            multiline={false}
-            onSubmitEditing={sendMessage}
-            returnKeyType="send"
-            blurOnSubmit={true}
-          />
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-            <Text style={styles.sendButtonText}>Send</Text>
+          <TouchableOpacity
+            style={[styles.debugButton, serviceRunning && styles.activeButton]}
+            onPress={toggleService}
+          >
+            <Text style={styles.debugButtonText}>
+              {!serviceRunning ? 'Start service' : 'Stop service'}
+            </Text>
           </TouchableOpacity>
         </View>
+        <Text style={styles.statusText}>
+          Connected: {connectedPeers.length} • {(isDiscovering == 'pending') ? 'Waiting...' : isDiscovering ? 'Discovering' : 'Idle'}
+        </Text>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

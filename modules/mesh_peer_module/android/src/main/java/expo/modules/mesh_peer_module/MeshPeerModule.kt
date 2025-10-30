@@ -240,6 +240,34 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       }
     }
 
+    AsyncFunction("getUsername") { promise: Promise ->
+      try {
+        val context = appContext.reactContext ?: run {
+          promise.reject("NO_CONTEXT", "App context is not available", null)
+          return@AsyncFunction
+        }
+        val sharedPrefs = context.getSharedPreferences("cruise_chat_prefs", android.content.Context.MODE_PRIVATE)
+        val username = sharedPrefs.getString("username", null)
+        promise.resolve(username)
+      } catch (e: Exception) {
+        promise.reject("GET_USERNAME_ERROR", "Failed to get username: ${e.message}", e)
+      }
+    }
+
+    AsyncFunction("setUsername") { username: String, promise: Promise ->
+      try {
+        val context = appContext.reactContext ?: run {
+          promise.reject("NO_CONTEXT", "App context is not available", null)
+          return@AsyncFunction
+        }
+        val sharedPrefs = context.getSharedPreferences("cruise_chat_prefs", android.content.Context.MODE_PRIVATE)
+        sharedPrefs.edit().putString("username", username).apply()
+        promise.resolve(null)
+      } catch (e: Exception) {
+        promise.reject("SET_USERNAME_ERROR", "Failed to set username: ${e.message}", e)
+      }
+    }
+
     View(MeshPeerModuleView::class) {
       Prop("url") { view: MeshPeerModuleView, url: URL ->
         view.webView.loadUrl(url.toString())

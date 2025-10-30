@@ -21,6 +21,10 @@ declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   
   // Database functions
   getAllMessageIds(): Promise<string[]>;
+  
+  // Username functions
+  getUsername(): Promise<string | null>;
+  setUsername(username: string): Promise<void>;
 }
 
 // This call loads the native module object from the JSI.
