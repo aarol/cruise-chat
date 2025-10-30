@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { eq } from 'drizzle-orm';
 import { db } from './index';
 import { type Message, messages, type NewMessage } from './schema';
 
@@ -37,9 +38,9 @@ export const getMessageIds = async (): Promise<string[]> => {
   }
 };
 
-export const getMessages = async (): Promise<Message[]> => {
+export const getMessages = async (chatId: string): Promise<Message[]> => {
   try {
-    return await db.select().from(messages).orderBy(messages.createdAt);
+    return await db.select().from(messages).where(eq(messages.chatId, chatId)).orderBy(messages.createdAt);
   } catch (error) {
     console.error('Error fetching messages:', error);
     throw new Error(`Failed to get messages: ${error}`);

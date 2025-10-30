@@ -20,9 +20,10 @@ interface ChatWindowProps {
   showBigStartButton?: boolean;
   onStartButtonPress?: () => void;
   emptyStateMessage?: string;
+  chatId?: string;
 }
 
-export default function ChatWindow({ username, showBigStartButton, onStartButtonPress, emptyStateMessage }: ChatWindowProps) {
+export default function ChatWindow({ username, showBigStartButton, onStartButtonPress, emptyStateMessage, chatId = "" }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -31,7 +32,7 @@ export default function ChatWindow({ username, showBigStartButton, onStartButton
   // Load messages from database on mount and listen for new messages
   useEffect(() => {
     const loadMessages = async () => {
-      const dbMessages = await getMessages();
+      const dbMessages = await getMessages(chatId);
       setMessages(dbMessages);
     };
 
@@ -46,7 +47,7 @@ export default function ChatWindow({ username, showBigStartButton, onStartButton
     return () => {
       newMessagesSubscription?.remove();
     };
-  }, []);
+  }, [chatId]);
 
   // Function to check if user is at bottom of scroll
   const handleScroll = (event: any) => {
@@ -59,6 +60,7 @@ export default function ChatWindow({ username, showBigStartButton, onStartButton
   const scrollToBottom = () => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
+  useEffect(scrollToBottom, [showBigStartButton])
 
   // Auto-scroll to bottom when new messages arrive (if user was already at bottom)
   useEffect(() => {
@@ -69,7 +71,7 @@ export default function ChatWindow({ username, showBigStartButton, onStartButton
 
   const sendMessage = async () => {
     const currentUsername = username || 'local-user';
-    const newMessage = await addMessage(inputText.trim(), currentUsername, ""); // empty chat id = global chat
+    const newMessage = await addMessage(inputText.trim(), currentUsername, chatId);
 
     if (inputText.trim()) {
       try {
@@ -78,7 +80,7 @@ export default function ChatWindow({ username, showBigStartButton, onStartButton
           newMessage.id,
           newMessage.content,
           newMessage.userId,
-          newMessage.createdAt.getTime() * 1000,
+          newMessage.createdAt.getTime(),
           newMessage.chatId
         );
         setMessages(messages => [...messages, newMessage]);

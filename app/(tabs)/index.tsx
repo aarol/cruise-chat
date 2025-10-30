@@ -146,6 +146,7 @@ export default function TabOneScreen() {
         showBigStartButton={showBigStartButton}
         onStartButtonPress={handleStartButtonPress}
         emptyStateMessage="If you are on the cruise we could see messages soon"
+        chatId=''
       />
 
     </View>

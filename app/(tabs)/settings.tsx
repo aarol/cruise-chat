@@ -8,11 +8,13 @@ import { useCallback, useState } from 'react';
 export default function TabTwoScreen() {
   const [isServiceRunning, setIsServiceRunning] = useState(false);
   const [username, setUsername] = useState('');
+  const [connectedPeers, setConnectedPeers] = useState<string[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       checkServiceState();
       loadUsername();
+      loadConnectedPeers();
     }, [])
   );
 
@@ -24,6 +26,15 @@ export default function TabTwoScreen() {
       }
     } catch (error) {
       console.error('Failed to load username:', error);
+    }
+  };
+
+  const loadConnectedPeers = async () => {
+    try {
+      const peers = await MeshPeerModule.getConnectedPeers();
+      setConnectedPeers(peers);
+    } catch (error) {
+      console.error('Failed to load connected peers:', error);
     }
   };
 
@@ -102,6 +113,7 @@ export default function TabTwoScreen() {
       <View style={styles.footer}>
         <Text style={styles.infoText}>Cruise Chat v1.0</Text>
         <Text style={styles.infoText}>Mesh networking for offline communication</Text>
+        <Text style={styles.infoText}>Currently connected: {connectedPeers.length} peer{connectedPeers.length !== 1 && 's'}</Text>
       </View>
     </View>
   );
