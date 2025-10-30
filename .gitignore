@@ -41,3 +41,7 @@ yarn-error.*
 /android
 
 modules/*/android/build/
+local.properties
+
+.gradle
+.idea
