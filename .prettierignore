@@ -1,0 +1,7 @@
+# Ignore artifacts:
+build
+coverage
+android
+.expo
+ios
+node_modules
