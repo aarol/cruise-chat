@@ -17,10 +17,12 @@ import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
 
 interface ChatWindowProps {
   username: string | null;
+  showBigStartButton?: boolean;
+  onStartButtonPress?: () => void;
   emptyStateMessage?: string;
 }
 
-export default function ChatWindow({ username, emptyStateMessage }: ChatWindowProps) {
+export default function ChatWindow({ username, showBigStartButton, onStartButtonPress, emptyStateMessage }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -67,7 +69,7 @@ export default function ChatWindow({ username, emptyStateMessage }: ChatWindowPr
 
   const sendMessage = async () => {
     const currentUsername = username || 'local-user';
-    const newMessage = await addMessage(inputText.trim(), currentUsername, "global-chat");
+    const newMessage = await addMessage(inputText.trim(), currentUsername, ""); // empty chat id = global chat
 
     if (inputText.trim()) {
       try {
@@ -97,49 +99,61 @@ export default function ChatWindow({ username, emptyStateMessage }: ChatWindowPr
       keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 100}
     >
       <View style={styles.inner}>
-        {/* Messages list */}
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={true}
-          keyboardShouldPersistTaps="handled"
-          scrollEnabled={true}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-        >
-          {messages.length === 0 ? (
-            <View style={styles.emptyStateContainer}>
-              <Text style={styles.emptyStateTitle}>Waiting...</Text>
-              {emptyStateMessage && (
-                <Text style={styles.emptyStateSubtitle}>{emptyStateMessage}</Text>
-              )}
-            </View>
-          ) : (
-            messages.map((message) => {
-              const messageTime = new Date(message.createdAt).toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-              });
-              
-              return (
-                <View key={message.id} style={styles.messageContainer}>
-                  <View style={styles.messageBar} />
-                  <View style={styles.messageContent}>
-                    <Text style={styles.messageText}>
-                      <Text style={styles.username}>{message.userId}</Text>
-                      <Text style={styles.messageBody}>: {message.content}</Text>
-                    </Text>
+        {showBigStartButton ? (
+          // Big start button view
+          <View style={styles.startButtonContainer}>
+            <TouchableOpacity 
+              style={styles.bigStartButton}
+              onPress={onStartButtonPress}
+            >
+              <Text style={styles.bigStartButtonText}>I am on the cruise</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // Messages list
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.messagesContainer}
+            contentContainerStyle={styles.messagesContent}
+            showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="handled"
+            scrollEnabled={true}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          >
+            {messages.length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <Text style={styles.emptyStateTitle}>Waiting...</Text>
+                {emptyStateMessage && (
+                  <Text style={styles.emptyStateSubtitle}>{emptyStateMessage}</Text>
+                )}
+              </View>
+            ) : (
+              messages.map((message) => {
+                const messageTime = new Date(message.createdAt).toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false
+                });
+                
+                return (
+                  <View key={message.id} style={styles.messageContainer}>
+                    <View style={styles.messageBar} />
+                    <View style={styles.messageContent}>
+                      <Text style={styles.messageText}>
+                        <Text style={styles.username}>{message.userId}</Text>
+                        <Text style={styles.messageBody}>: {message.content}</Text>
+                      </Text>
+                    </View>
+                    <Text style={styles.timestamp}>{messageTime}</Text>
                   </View>
-                  <Text style={styles.timestamp}>{messageTime}</Text>
-                </View>
-              );
-            })
-          )}
-        </ScrollView>
+                );
+              })
+            )}
+          </ScrollView>
+        )}
 
-        {/* Input area */}
+        {/* Input area - always shown but disabled when big button is showing */}
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.textInput}
@@ -152,8 +166,13 @@ export default function ChatWindow({ username, emptyStateMessage }: ChatWindowPr
             returnKeyType="send"
             blurOnSubmit={false}
             underlineColorAndroid="transparent"
+            editable={!showBigStartButton}
           />
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+          <TouchableOpacity 
+            style={styles.sendButton} 
+            onPress={sendMessage}
+            disabled={showBigStartButton}
+          >
             <Text style={styles.sendButtonText}>➤</Text>
           </TouchableOpacity>
         </View>
@@ -168,6 +187,25 @@ const styles = StyleSheet.create({
   },
   inner: {
     flex: 1,
+  },
+  startButtonContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  bigStartButton: {
+    backgroundColor: '#FF6B35',
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    borderRadius: 50,
+    minWidth: 250,
+  },
+  bigStartButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   messagesContainer: {
     flex: 1,

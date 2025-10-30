@@ -53,6 +53,10 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     private var database: SQLiteDatabase? = null
     public var connectionHandler: ConnectionHandler = ConnectionHandler()
     
+    // State tracking
+    private var isServiceRunning = false
+    private var isDiscovering = false
+    
     
     inner class LocalBinder : Binder() {
         fun getService(): NearbyService = this@NearbyService
@@ -69,6 +73,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
     override fun onStartCommand(intent: Intent?, startFlags: Int, startId: Int): Int {
         Log.d(TAG, "NearbyService onStartCommand() called")
+        isServiceRunning = true
 
         val appIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
@@ -101,12 +106,22 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     public fun startFindConnections(): Boolean {
         val res1: Boolean = connectionHandler.startDiscovery()
         val res2: Boolean = connectionHandler.startAdvertising()
-        return res1 && res2
+        isDiscovering = res1 && res2
+        return isDiscovering
     }
     public fun stopFindConnections(): Boolean {
         val res1: Boolean = connectionHandler.stopDiscovery()
         val res2: Boolean = connectionHandler.stopAdvertising()
+        isDiscovering = false
         return res1 && res2
+    }
+    
+    public fun isServiceRunning(): Boolean {
+        return isServiceRunning
+    }
+    
+    public fun isDiscovering(): Boolean {
+        return isDiscovering
     }
 
     fun setListener(listener: NearbyServiceListener?) {
@@ -531,6 +546,8 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         connectionHandler.disconnectFromAllPeers()
         connectionHandler.stopAdvertising()
         connectionHandler.stopDiscovery()
+        isServiceRunning = false
+        isDiscovering = false
         closeDatabase()
         Log.d(TAG, "NearbyService destroyed")
     }

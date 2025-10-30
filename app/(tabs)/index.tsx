@@ -2,25 +2,35 @@ import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
 import
   {
     StyleSheet,
-    ToastAndroid,
-    TouchableOpacity
+    ToastAndroid
   } from 'react-native';
 
 import ChatWindow from '@/components/ChatWindow';
-import { Text, View } from '@/components/Themed';
+import { View } from '@/components/Themed';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 export default function TabOneScreen() {
   const router = useRouter();
   const [connectedPeers, setConnectedPeers] = useState<string[]>([])
-  const [isDiscovering, setIsDiscovering] = useState<false | true | 'pending'>(false)
-  const [serviceRunning, setServiceRunning] = useState(false) // Todo: query from module instead of storing this
   const [username, setUsername] = useState<string | null>(null)
+  const [showBigStartButton, setShowBigStartButton] = useState(true)
 
   useEffect(() => {
     checkUsername();
+    checkServiceState();
   }, []);
+
+  const checkServiceState = async () => {
+    try {
+      const isRunning = await MeshPeerModule.isServiceRunning();
+      const discovering = await MeshPeerModule.isDiscovering();
+      // If service is running or discovering, hide the big start button
+      setShowBigStartButton(!isRunning && !discovering);
+    } catch (error) {
+      console.error('Failed to check service state:', error);
+    }
+  };
 
   const checkUsername = async () => {
     try {
@@ -86,90 +96,47 @@ export default function TabOneScreen() {
     }
   };
 
-  const startNearbyConnections = async () => {
-    startDiscovery()
-  };
-
-  const stopNearbyConnections = async () => {
-    stopDiscovery()
-  };
-
-  const toggleService = async () => {
-    if (!serviceRunning) {
-      MeshPeerModule.startNearbyService().then(() => console.log('ok')).catch((err) => {
-        console.error('Failed to start service:', err);
-      });
-      setServiceRunning(true)
-    }
-    else {
-      MeshPeerModule.stopNearbyService().then(() => console.log('ok')).catch((err) => {
-        console.error('Failed to stop service:', err);
-      });
-      setConnectedPeers([])
-      setServiceRunning(false)
-    }
-  }
-
   const startDiscovery = async () => {
     try {
       const hasPermissions = await requestPermissions();
       if (!hasPermissions) return;
-      setIsDiscovering('pending');
       await MeshPeerModule.startDiscovery();
       console.log('Discovery started');
-      setIsDiscovering(true);
-
+      await checkServiceState();
     } catch (error) {
       ToastAndroid.show(`❌ Failed to start discovery: ${error}`, ToastAndroid.LONG);
     }
   };
 
-  const stopDiscovery = async () => {
-    try {
-      await MeshPeerModule.stopDiscovery();
-      setIsDiscovering(false)
-    } catch (error) {
-      ToastAndroid.show(`❌ Failed to stop discovery: ${error}`, ToastAndroid.LONG);
+  const handleStartButtonPress = async () => {
+    // Check if service is already running
+    const isRunning = await MeshPeerModule.isServiceRunning();
+    
+    // Start service first if not running
+    if (!isRunning) {
+      try {
+        await MeshPeerModule.startNearbyService();
+        console.log('Service started');
+      } catch (err) {
+        console.error('Failed to start service:', err);
+        ToastAndroid.show(`❌ Failed to start service: ${err}`, ToastAndroid.LONG);
+        return;
+      }
     }
+    
+    // Then start discovery
+    await startDiscovery();
   };
 
   return (
     <View style={styles.container}>
       <ChatWindow 
         username={username} 
+        showBigStartButton={showBigStartButton}
+        onStartButtonPress={handleStartButtonPress}
         emptyStateMessage="If you are on the cruise we could see messages soon"
       />
 
-      {/* Control buttons */}
-      <View style={styles.controlsContainer}>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={[
-              styles.debugButton,
-              (isDiscovering === true) && styles.activeButton,
-              (isDiscovering === 'pending') && styles.pendingButton
-            ]}
-            onPress={(isDiscovering) ? stopNearbyConnections : startNearbyConnections}
-            disabled={isDiscovering == 'pending'}
-          >
-            <Text style={styles.debugButtonText}>
-              {(isDiscovering) ? '📡 Stop' : '📡 Find'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.debugButton, serviceRunning && styles.activeButton]}
-            onPress={toggleService}
-          >
-            <Text style={styles.debugButtonText}>
-              {!serviceRunning ? 'Start service' : 'Stop service'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.statusText}>
-          Connected: {connectedPeers.length} • {(isDiscovering == 'pending') ? 'Waiting...' : isDiscovering ? 'Discovering' : 'Idle'}
-        </Text>
-      </View>
     </View>
   );
 }

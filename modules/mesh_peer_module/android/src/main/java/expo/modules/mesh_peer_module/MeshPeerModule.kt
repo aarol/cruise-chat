@@ -268,6 +268,24 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       }
     }
 
+    AsyncFunction("isServiceRunning") { promise: Promise ->
+      try {
+        val isRunning = nearbyService?.isServiceRunning() ?: false
+        promise.resolve(isRunning)
+      } catch (e: Exception) {
+        promise.reject("STATE_ERROR", "Failed to get service state: ${e.message}", e)
+      }
+    }
+
+    AsyncFunction("isDiscovering") { promise: Promise ->
+      try {
+        val discovering = nearbyService?.isDiscovering() ?: false
+        promise.resolve(discovering)
+      } catch (e: Exception) {
+        promise.reject("STATE_ERROR", "Failed to get discovery state: ${e.message}", e)
+      }
+    }
+
     View(MeshPeerModuleView::class) {
       Prop("url") { view: MeshPeerModuleView, url: URL ->
         view.webView.loadUrl(url.toString())
