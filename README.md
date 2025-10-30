@@ -14,3 +14,7 @@ CruiseChat aims to be a simple messaging app that works with peer-to-peer connec
 - Service restart across reboots
 - Throttling users (limit messages sent per second)
 - Gifs
+
+## Developing the native module
+
+[Instructions](https://docs.expo.dev/modules/get-started/#edit-the-module)
