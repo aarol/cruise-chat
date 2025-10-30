@@ -1,27 +1,15 @@
 package expo.modules.mesh_peer_module
 
-import android.app.Notification
-import android.app.PendingIntent
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Service
-import android.content.Intent
-import android.os.Build
-import android.os.IBinder
-import android.os.Binder
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.*
-import java.nio.charset.StandardCharsets
-
-
-import org.json.JSONObject
-import org.json.JSONArray
 
 class ConnectionHandler {
 
     private val TAG = "NearbyService"
+    private val SERVICE_ID = "com.anonymous.cruisechat"
+
+    private val currName = generateRandomString()
 
     interface ConnectionCallbacks {
         fun onPeerConnected(endpointId: String)
@@ -45,8 +33,8 @@ class ConnectionHandler {
         val advertisingOptions = AdvertisingOptions.Builder().setStrategy(strategy).build()
         return try {
             connectionsClient.startAdvertising(
-                "CruiseChat_${android.os.Build.MODEL}",
-                "CruiseChat",
+                currName,
+                SERVICE_ID,
                 connectionLifecycleCallback,
                 advertisingOptions
             )
@@ -62,7 +50,7 @@ class ConnectionHandler {
         val discoveryOptions = DiscoveryOptions.Builder().setStrategy(strategy).build()
         return try {
             connectionsClient.startDiscovery(
-                "CruiseChat",
+                SERVICE_ID,
                 endpointDiscoveryCallback,
                 discoveryOptions
             )
@@ -77,13 +65,13 @@ class ConnectionHandler {
     fun stopAdvertising(): Boolean {
         Log.d(TAG, "stop advertising")
         connectionsClient.stopAdvertising()
-        return true;
+        return true
     }
     
     fun stopDiscovery(): Boolean {
         Log.d(TAG, "stop discovery")
         connectionsClient.stopDiscovery()
-        return true;
+        return true
     }
     
     
@@ -168,10 +156,11 @@ class ConnectionHandler {
 
     private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
-            Log.d(TAG, "Endpoint foudn!!!!. We send: ${"CruiseChat_${Build.MODEL}" < info.endpointName}")
-            if ("CruiseChat_${Build.MODEL}" < info.endpointName) {
+            Log.d(TAG, "Endpoint found: " + info.endpointName)
+            if (currName < info.endpointName) {
+                Log.d(TAG, "Connecting to endpoint")
                 connectionsClient.requestConnection(
-                    "CruiseChat_${android.os.Build.MODEL}",
+                    currName,
                     endpointId,
                     connectionLifecycleCallback
                 ).addOnSuccessListener {
@@ -179,11 +168,20 @@ class ConnectionHandler {
                 }.addOnFailureListener { exception ->
                     Log.d(TAG, "❌ Connection failed: ${exception.message}")
                 }
+            } else {
+                Log.d(TAG, "Waiting for connection from endpoint")
             }
         }
 
         override fun onEndpointLost(endpointId: String) {
             // listener?.onPeerLost(endpointId)
         }
+    }
+
+    fun generateRandomString(length: Int = 10): String {
+        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        return (1..length)
+            .map { chars.random() }
+            .joinToString("")
     }
 }
