@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import
-    {
-        KeyboardAvoidingView,
-        Platform,
-        ScrollView,
-        StyleSheet,
-        TextInput,
-        ToastAndroid,
-        TouchableOpacity
-    } from 'react-native';
+  {
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    ToastAndroid,
+    TouchableOpacity
+  } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
 import { Message } from '@/database/schema';
@@ -184,15 +184,18 @@ export default function ChatWindow({ username, showBigStartButton, onStartButton
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   inner: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   startButtonContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
+    backgroundColor: '#fff',
   },
   bigStartButton: {
     backgroundColor: '#FF6B35',
@@ -212,17 +215,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     marginBottom: 10,
     minHeight: 100,
+    backgroundColor: '#fff',
   },
   messagesContent: {
     flexGrow: 1,
     justifyContent: 'flex-end',
     paddingVertical: 10,
+    backgroundColor: '#fff',
   },
   emptyStateContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    backgroundColor: '#fff',
   },
   emptyStateTitle: {
     fontSize: 18,

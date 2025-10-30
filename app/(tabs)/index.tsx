@@ -7,8 +7,11 @@ import
 
 import ChatWindow from '@/components/ChatWindow';
 import { View } from '@/components/Themed';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
+function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 export default function TabOneScreen() {
   const router = useRouter();
@@ -18,8 +21,14 @@ export default function TabOneScreen() {
 
   useEffect(() => {
     checkUsername();
-    checkServiceState();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("Tab focused - checking service status");
+      checkServiceState();
+    }, [])
+  );
 
   const checkServiceState = async () => {
     try {
@@ -122,6 +131,8 @@ export default function TabOneScreen() {
         ToastAndroid.show(`❌ Failed to start service: ${err}`, ToastAndroid.LONG);
         return;
       }
+      // Wait a bit to allow it to start (TODO: fix this hack)
+      await sleep(100)
     }
     
     // Then start discovery
