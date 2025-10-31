@@ -1,72 +1,89 @@
-import { MaterialIcons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import {
+  Href,
+  Tabs,
+  useRouter,
+  useSegments,
+  withLayoutContext,
+} from "expo-router";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import React from "react";
-import { useTheme } from "react-native-paper";
+import {
+  BottomNavigation,
+  BottomNavigationProps,
+  MaterialBottomTabNavigationEventMap,
+  MaterialBottomTabNavigationOptions,
+  useTheme,
+} from "react-native-paper";
+import {
+  CommonActions,
+  TabNavigationState,
+  ParamListBase,
+} from "@react-navigation/native";
 
-import { useClientOnlyValue } from "@/components/useClientOnlyValue";
-
-// Material Design 3 tab bar icon component
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof MaterialIcons>["name"];
-  color: string;
-  size?: number;
-}) {
-  return <MaterialIcons size={24} {...props} />;
-}
+const { Navigator } = createBottomTabNavigator();
+const MaterialBottomTabs = withLayoutContext<
+  MaterialBottomTabNavigationOptions,
+  typeof Navigator,
+  TabNavigationState<ParamListBase>,
+  MaterialBottomTabNavigationEventMap
+>(Navigator);
 
 export default function TabLayout() {
   const theme = useTheme();
-
   return (
-    <Tabs
+    <MaterialBottomTabs
       screenOptions={{
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
-        tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.outlineVariant,
-          borderTopWidth: 1,
-          height: 70,
-          paddingBottom: 16,
-          paddingTop: 8,
-          elevation: 8,
-          shadowColor: theme.colors.shadow,
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "500",
-          marginTop: 4,
-        },
-        tabBarIconStyle: {
-          marginBottom: 0,
-        },
-        headerStyle: {
-          backgroundColor: theme.colors.surface,
-          elevation: 0,
-          shadowOpacity: 0,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.colors.outlineVariant,
-        },
-        headerTitleStyle: {
-          color: theme.colors.onSurface,
-          fontSize: 22,
-          fontWeight: "500",
-        },
-        headerTintColor: theme.colors.onSurface,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
+        animation: "none",
       }}
+      tabBar={({ navigation, state, descriptors, insets }) => (
+        <BottomNavigation.Bar
+          theme={theme}
+          navigationState={state}
+          safeAreaInsets={insets}
+          onTabPress={({ route, preventDefault }) => {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (event.defaultPrevented) {
+              preventDefault();
+            } else {
+              navigation.dispatch({
+                ...CommonActions.navigate(route.name, route.params),
+                target: state.key,
+              });
+            }
+          }}
+          renderIcon={({ route, focused, color }) =>
+            descriptors[route.key].options.tabBarIcon?.({
+              focused,
+              color,
+              size: 24,
+            }) || null
+          }
+          getLabelText={({ route }) => {
+            const { options } = descriptors[route.key];
+            const label =
+              typeof options.tabBarLabel === "string"
+                ? options.tabBarLabel
+                : typeof options.title === "string"
+                  ? options.title
+                  : route.name;
+
+            return label;
+          }}
+        />
+      )}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "General Chat",
           tabBarIcon: ({ color, size = 24 }) => (
-            <TabBarIcon name="chat" color={color} size={size} />
+            <MaterialCommunityIcons name="chat" color={color} size={size} />
           ),
           tabBarLabel: "Chat",
         }}
@@ -76,7 +93,7 @@ export default function TabLayout() {
         options={{
           title: "Rooms",
           tabBarIcon: ({ color, size = 24 }) => (
-            <TabBarIcon name="group" color={color} size={size} />
+            <MaterialCommunityIcons name="group" color={color} size={size} />
           ),
           tabBarLabel: "Rooms",
         }}
@@ -86,11 +103,15 @@ export default function TabLayout() {
         options={{
           title: "Settings",
           tabBarIcon: ({ color, size = 24 }) => (
-            <TabBarIcon name="settings" color={color} size={size} />
+            <MaterialCommunityIcons
+              name="car-settings"
+              color={color}
+              size={size}
+            />
           ),
           tabBarLabel: "Settings",
         }}
       />
-    </Tabs>
+    </MaterialBottomTabs>
   );
 }
