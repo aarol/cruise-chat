@@ -5,3 +5,7 @@ android
 .expo
 ios
 node_modules
+*.kt
+*.md
+pnpm-lock.yaml
+drizzle/

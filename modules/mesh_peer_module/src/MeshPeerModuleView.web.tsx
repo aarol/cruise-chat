@@ -1,6 +1,6 @@
-import * as React from 'react';
+import * as React from "react";
 
-import { MeshPeerModuleViewProps } from './MeshPeerModule.types';
+import { MeshPeerModuleViewProps } from "./MeshPeerModule.types";
 
 export default function MeshPeerModuleView(props: MeshPeerModuleViewProps) {
   return (
