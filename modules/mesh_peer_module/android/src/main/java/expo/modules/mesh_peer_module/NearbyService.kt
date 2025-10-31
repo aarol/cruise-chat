@@ -143,6 +143,11 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     override fun onPayloadReceived(endpointId: String, payload: Payload) {
         when (payload.type) {
             Payload.Type.BYTES -> {
+                val payloadSize = payload.asBytes()!!.size
+                val sizePercentage = payloadSize / ConnectionsClient.MAX_BYTES_DATA_SIZE.toDouble()
+                Log.d(TAG, "Received message with $payloadSize bytes. " +
+                        "That is ${sizePercentage * 100}% of maximum message size.")
+
                 val messageData = String(payload.asBytes()!!, StandardCharsets.UTF_8)
                 
                 try {
@@ -302,11 +307,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             return 0
         }
     }
-    
-    fun isDatabaseReady(): Boolean {
-        return database != null && database?.isOpen == true
-    }
-    
+
     private fun notifyNewMessages(newMessageCount: Int) {
         try {
             val totalMessages = getMessageCount()
