@@ -1,25 +1,21 @@
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
-import {
-  Href,
-  Tabs,
-  useRouter,
-  useSegments,
-  withLayoutContext,
-} from "expo-router";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import {
+  CommonActions,
+  ParamListBase,
+  TabNavigationState,
+} from "@react-navigation/native";
+import {
+  Tabs,
+  withLayoutContext
+} from "expo-router";
 import React from "react";
 import {
   BottomNavigation,
-  BottomNavigationProps,
   MaterialBottomTabNavigationEventMap,
   MaterialBottomTabNavigationOptions,
-  useTheme,
+  useTheme
 } from "react-native-paper";
-import {
-  CommonActions,
-  TabNavigationState,
-  ParamListBase,
-} from "@react-navigation/native";
 
 const { Navigator } = createBottomTabNavigator();
 const MaterialBottomTabs = withLayoutContext<
@@ -82,6 +78,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "General Chat",
+          
           tabBarIcon: ({ color, size = 24 }) => (
             <MaterialCommunityIcons name="chat" color={color} size={size} />
           ),
@@ -103,8 +100,8 @@ export default function TabLayout() {
         options={{
           title: "Settings",
           tabBarIcon: ({ color, size = 24 }) => (
-            <MaterialCommunityIcons
-              name="car-settings"
+            <MaterialIcons
+              name="settings"
               color={color}
               size={size}
             />

@@ -1,34 +1,39 @@
+import { paperTheme } from "@/constants/themes/paperTheme";
+import db from "@/database";
+import migrations from "@/drizzle/migrations";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import {
+  DefaultTheme,
+  ThemeProvider
+} from "@react-navigation/native";
+import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { PaperProvider, adaptNavigationTheme } from "react-native-paper";
-import { paperTheme } from "@/constants/themes/paperTheme";
-import "react-native-reanimated";
-import db from "@/database";
-import migrations from "@/drizzle/migrations";
-import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
 import "react-native-get-random-values";
-import { StatusBar } from "expo-status-bar";
+import { PaperProvider, adaptNavigationTheme } from "react-native-paper";
+import "react-native-reanimated";
 
-const { LightTheme } = adaptNavigationTheme({
+const { LightTheme } = adaptNavigationTheme<ReactNavigation.Theme>({
   reactNavigationLight: DefaultTheme,
 });
 
-const navigationTheme = {
+const customTheme = {
   ...DefaultTheme,
+  ...LightTheme,
   colors: {
-    ...DefaultTheme.colors,
-    primary: paperTheme.colors.primary,
+    ...LightTheme.colors,
+    card: paperTheme.colors.surface,
+    background: paperTheme.colors.background,
   },
-};
+} satisfies ReactNavigation.Theme;
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from "expo-router";
 
 export const unstable_settings = {
@@ -80,7 +85,7 @@ export default function RootLayout() {
 function RootLayoutNav() {
   return (
     <PaperProvider theme={paperTheme}>
-      <ThemeProvider value={navigationTheme}>
+      <ThemeProvider value={customTheme}>
         <StatusBar
           style="dark" // there is currently only a light theme, so make the statusbar dark.
           backgroundColor="transparent"

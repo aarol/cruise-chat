@@ -1,52 +1,47 @@
 import { MD3LightTheme } from "react-native-paper";
 
+const generatedTheme = {
+  colors: {
+    primary: "#FFCF00",
+    onPrimary: "#FFFFFF",
+    primaryContainer: "#E6D89D",
+    onPrimaryContainer: "#332900",
+    secondary: "#FFCF00",
+    onSecondary: "#FFFFFF",
+    secondaryContainer: "#E6D89D",
+    onSecondaryContainer: "#002133",
+    tertiary: "#DDB900",
+    onTertiary: "#FFFFFF",
+    tertiaryContainer: "#E6DA9D",
+    onTertiaryContainer: "#332B00",
+    error: "#B3261E",
+    onError: "#FFFFFF",
+    errorContainer: "#E6ACA9",
+    onErrorContainer: "#330B09",
+    background: "#fcfcfb",
+    onBackground: "#333330",
+    surface: "#fdfdfdff",
+    onSurface: "#333330",
+    surfaceVariant: "#e6e6e4ff",
+    onSurfaceVariant: "#666252",
+    outline: "#99937a",
+    elevation: {
+      level0: "transparent",
+      level1: "rgb(248, 243, 242)",
+      level2: "rgba(240, 240, 240, 1)",
+      level3: "rgba(244, 244, 244, 1)",
+      level4: "rgba(236, 236, 236, 1)",
+      level5: "rgba(235, 235, 235, 1)",
+    },
+    surfaceDisabled: "rgba(30, 27, 22, 0.12)",
+    onSurfaceDisabled: "rgba(30, 27, 22, 0.38)",
+    backdrop: "rgba(54, 48, 36, 0.4)",
+  },
+};
+
 export const paperTheme = {
   ...MD3LightTheme,
-  colors: {
-    ...MD3LightTheme.colors,
-    // Primary colors (main brand color)
-    primary: "#FF6B35",
-    onPrimary: "#FFFFFF",
-    primaryContainer: "#FFE4D6",
-    onPrimaryContainer: "#5C1A00",
-
-    // Secondary colors (complementary)
-    secondary: "#007AFF",
-    onSecondary: "#FFFFFF",
-    secondaryContainer: "#E3F2FD",
-    onSecondaryContainer: "#001D36",
-
-    // Tertiary colors (accent)
-    tertiary: "#4CAF50",
-    onTertiary: "#FFFFFF",
-    tertiaryContainer: "#E8F5E8",
-    onTertiaryContainer: "#0F5132",
-
-    // Error colors
-    error: "#BA1A1A",
-    onError: "#FFFFFF",
-    errorContainer: "#FFDAD6",
-    onErrorContainer: "#410002",
-
-    // Surface colors
-    surface: "#FFFBFF",
-    onSurface: "#1C1B1F",
-    surfaceVariant: "#F2F0F4",
-    onSurfaceVariant: "#49454F",
-
-    // Background colors
-    background: "#FFFBFF",
-    onBackground: "#1C1B1F",
-
-    // Outline colors
-    outline: "#79747E",
-    outlineVariant: "#CAC4D0",
-
-    // Chat-specific colors
-    messageBackground: "#F5F5F5",
-    messageBorder: "#E0E0E0",
-    timestampText: "#757575",
-  },
+  ...generatedTheme,
 };
 
 export type AppTheme = typeof paperTheme;
