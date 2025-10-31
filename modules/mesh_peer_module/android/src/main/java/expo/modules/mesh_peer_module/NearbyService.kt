@@ -461,8 +461,6 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             
             // Check if we already have this message
             if (!messageExists(message.id)) {
-                Log.d(TAG, "✅ New message, storing and broadcasting | ID: ${message.id}")
-                
                 // Store message in SQLite database
                 val stored = storeMessage(message)
                 Log.d(TAG, "💾 Message stored: $stored | ID: ${message.id}")

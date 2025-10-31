@@ -99,7 +99,6 @@ export default function ChatWindow({ username, emptyStateMessage, chatId = "" }:
   useEffect(() => {
     const loadMessages = async () => {
       const dbMessages = await getMessages(chatId);
-      console.log(dbMessages)
       setMessages(dbMessages);
     };
 
@@ -147,7 +146,7 @@ export default function ChatWindow({ username, emptyStateMessage, chatId = "" }:
           newMessage.id,
           newMessage.content,
           newMessage.userId,
-          newMessage.createdAt.getTime(),
+          newMessage.createdAt.getTime() / 1000,
           newMessage.chatId
         );
         setMessages(messages => [...messages, newMessage]);
