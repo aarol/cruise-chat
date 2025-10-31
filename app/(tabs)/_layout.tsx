@@ -44,10 +44,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="messages"
+        name="rooms"
         options={{
-          title: 'Messages',
-          tabBarIcon: ({ color }) => <TabBarIcon name="envelope" color={color} />,
+          title: 'Rooms',
+          tabBarIcon: ({ color }) => <TabBarIcon name="group" color={color} />,
         }}
       />
       <Tabs.Screen

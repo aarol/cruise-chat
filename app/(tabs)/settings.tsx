@@ -4,17 +4,20 @@ import { Text, View } from '@/components/Themed';
 import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
+import { getMessageCount } from '@/database/services';
 
 export default function TabTwoScreen() {
   const [isServiceRunning, setIsServiceRunning] = useState(false);
   const [username, setUsername] = useState('');
   const [connectedPeers, setConnectedPeers] = useState<string[]>([]);
+  const [messageCount, setMessageCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       checkServiceState();
       loadUsername();
       loadConnectedPeers();
+      loadMessageCount();
     }, [])
   );
 
@@ -35,6 +38,15 @@ export default function TabTwoScreen() {
       setConnectedPeers(peers);
     } catch (error) {
       console.error('Failed to load connected peers:', error);
+    }
+  };
+
+  const loadMessageCount = async () => {
+    try {
+      const count = await getMessageCount();
+      setMessageCount(count);
+    } catch (error) {
+      console.error('Failed to load message count:', error);
     }
   };
 
@@ -114,6 +126,7 @@ export default function TabTwoScreen() {
         <Text style={styles.infoText}>Cruise Chat v1.0</Text>
         <Text style={styles.infoText}>Mesh networking for offline communication</Text>
         <Text style={styles.infoText}>Currently connected: {connectedPeers.length} peer{connectedPeers.length !== 1 && 's'}</Text>
+        <Text style={styles.infoText}>Messages stored: {messageCount}</Text>
       </View>
     </View>
   );
@@ -182,7 +195,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B35',
     paddingVertical: 15,
     paddingHorizontal: 30,
-    borderRadius: 8,
+    borderRadius: 50,
     minWidth: 200,
   },
   buttonDisabled: {

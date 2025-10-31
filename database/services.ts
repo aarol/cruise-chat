@@ -46,3 +46,13 @@ export const getMessages = async (chatId: string): Promise<Message[]> => {
     throw new Error(`Failed to get messages: ${error}`);
   }
 };
+
+export const getMessageCount = async (): Promise<number> => {
+  try {
+    const result = await db.select().from(messages);
+    return result.length;
+  } catch (error) {
+    console.error('Error counting messages:', error);
+    throw new Error(`Failed to count messages: ${error}`);
+  }
+};
