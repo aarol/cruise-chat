@@ -14,20 +14,86 @@ import { Text, View } from '@/components/Themed';
 import { Message } from '@/database/schema';
 import { addMessage, getMessages } from '@/database/services';
 import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
+
+function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 interface ChatWindowProps {
   username: string | null;
-  showBigStartButton?: boolean;
-  onStartButtonPress?: () => void;
   emptyStateMessage?: string;
   chatId?: string;
 }
 
-export default function ChatWindow({ username, showBigStartButton, onStartButtonPress, emptyStateMessage, chatId = "" }: ChatWindowProps) {
+export default function ChatWindow({ username, emptyStateMessage, chatId = "" }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [showBigStartButton, setShowBigStartButton] = useState(true);
+
+  // Check service state when component focuses
+  useFocusEffect(
+    useCallback(() => {
+      checkServiceState();
+    }, [])
+  );
+
+  const checkServiceState = async () => {
+    try {
+      const isRunning = await MeshPeerModule.isServiceRunning();
+      const discovering = await MeshPeerModule.isDiscovering();
+      // If service is running or discovering, hide the big start button
+      setShowBigStartButton(!isRunning && !discovering);
+    } catch (error) {
+      console.error('Failed to check service state:', error);
+    }
+  };
+
+  const requestPermissions = async () => {
+    try {
+      await MeshPeerModule.requestPermissions()
+      return true;
+    } catch (error) {
+      console.error('Permission request failed:', error);
+      ToastAndroid.show(`❌ Permission request failed: ${error}`, ToastAndroid.LONG);
+      return false;
+    }
+  };
+
+  const startDiscovery = async () => {
+    try {
+      const hasPermissions = await requestPermissions();
+      if (!hasPermissions) return;
+      await MeshPeerModule.startDiscovery();
+      console.log('Discovery started');
+      await checkServiceState();
+    } catch (error) {
+      ToastAndroid.show(`❌ Failed to start discovery: ${error}`, ToastAndroid.LONG);
+    }
+  };
+
+  const handleStartButtonPress = async () => {
+    // Check if service is already running
+    const isRunning = await MeshPeerModule.isServiceRunning();
+    
+    // Start service first if not running
+    if (!isRunning) {
+      try {
+        await MeshPeerModule.startNearbyService();
+        console.log('Service started');
+      } catch (err) {
+        console.error('Failed to start service:', err);
+        ToastAndroid.show(`❌ Failed to start service: ${err}`, ToastAndroid.LONG);
+        return;
+      }
+      // Wait a bit to allow it to start (TODO: fix this hack)
+      await sleep(100)
+    }
+    
+    // Then start discovery
+    await startDiscovery();
+  };
 
   // Load messages from database on mount and listen for new messages
   useEffect(() => {
@@ -106,7 +172,7 @@ export default function ChatWindow({ username, showBigStartButton, onStartButton
           <View style={styles.startButtonContainer}>
             <TouchableOpacity 
               style={styles.bigStartButton}
-              onPress={onStartButtonPress}
+              onPress={handleStartButtonPress}
             >
               <Text style={styles.bigStartButtonText}>I am on the cruise</Text>
             </TouchableOpacity>

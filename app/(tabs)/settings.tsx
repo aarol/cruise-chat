@@ -104,7 +104,7 @@ export default function TabTwoScreen() {
             onPress={handleStopService}
             disabled={!isServiceRunning}
           >
-            <Text style={styles.buttonText}>Stop Service</Text>
+            <Text style={styles.buttonText}>Stop Message Discovery</Text>
           </TouchableOpacity>
         </View>
       </View>
