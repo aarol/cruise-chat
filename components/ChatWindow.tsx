@@ -1,23 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
-import
-  {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    ToastAndroid,
-    TouchableOpacity
-  } from 'react-native';
+import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
+import {
+  Button,
+  Surface,
+  Text,
+  TextInput,
+  useTheme,
+  Snackbar,
+  FAB,
+  IconButton,
+} from "react-native-paper";
+import { useFocusEffect } from "@react-navigation/native";
 
-import { Text, View } from '@/components/Themed';
-import { Message } from '@/database/schema';
-import { addMessage, getMessages } from '@/database/services';
-import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback } from 'react';
+import { Message } from "@/database/schema";
+import { addMessage, getMessages } from "@/database/services";
+import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
 
-function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 interface ChatWindowProps {
   username: string | null;
@@ -25,19 +32,31 @@ interface ChatWindowProps {
   chatId?: string;
 }
 
-export default function ChatWindow({ username, emptyStateMessage, chatId = "" }: ChatWindowProps) {
+export default function ChatWindow({
+  username,
+  emptyStateMessage,
+  chatId = "",
+}: ChatWindowProps) {
+  const theme = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState("");
   const scrollViewRef = useRef<ScrollView>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [showBigStartButton, setShowBigStartButton] = useState(true);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
 
   // Check service state when component focuses
   useFocusEffect(
     useCallback(() => {
       checkServiceState();
-    }, [])
+    }, []),
   );
+
+  const showSnackbar = (message: string) => {
+    setSnackbarMessage(message);
+    setSnackbarVisible(true);
+  };
 
   const checkServiceState = async () => {
     try {
@@ -46,17 +65,17 @@ export default function ChatWindow({ username, emptyStateMessage, chatId = "" }:
       // If service is running or discovering, hide the big start button
       setShowBigStartButton(!isRunning && !discovering);
     } catch (error) {
-      console.error('Failed to check service state:', error);
+      console.error("Failed to check service state:", error);
     }
   };
 
   const requestPermissions = async () => {
     try {
-      await MeshPeerModule.requestPermissions()
+      await MeshPeerModule.requestPermissions();
       return true;
     } catch (error) {
-      console.error('Permission request failed:', error);
-      ToastAndroid.show(`❌ Permission request failed: ${error}`, ToastAndroid.LONG);
+      console.error("Permission request failed:", error);
+      showSnackbar(`Permission request failed: ${error}`);
       return false;
     }
   };
@@ -66,31 +85,31 @@ export default function ChatWindow({ username, emptyStateMessage, chatId = "" }:
       const hasPermissions = await requestPermissions();
       if (!hasPermissions) return;
       await MeshPeerModule.startDiscovery();
-      console.log('Discovery started');
+      console.log("Discovery started");
       await checkServiceState();
     } catch (error) {
-      ToastAndroid.show(`❌ Failed to start discovery: ${error}`, ToastAndroid.LONG);
+      showSnackbar(`Failed to start discovery: ${error}`);
     }
   };
 
   const handleStartButtonPress = async () => {
     // Check if service is already running
     const isRunning = await MeshPeerModule.isServiceRunning();
-    
+
     // Start service first if not running
     if (!isRunning) {
       try {
         await MeshPeerModule.startNearbyService();
-        console.log('Service started');
+        console.log("Service started");
       } catch (err) {
-        console.error('Failed to start service:', err);
-        ToastAndroid.show(`❌ Failed to start service: ${err}`, ToastAndroid.LONG);
+        console.error("Failed to start service:", err);
+        showSnackbar(`Failed to start service: ${err}`);
         return;
       }
       // Wait a bit to allow it to start (TODO: fix this hack)
-      await sleep(100)
+      await sleep(100);
     }
-    
+
     // Then start discovery
     await startDiscovery();
   };
@@ -104,11 +123,16 @@ export default function ChatWindow({ username, emptyStateMessage, chatId = "" }:
 
     loadMessages();
 
-    const newMessagesSubscription = MeshPeerModule.addListener('onNewMessages', (data) => {
-      console.log(`${data.count} new messages received! Total messages: ${data.totalMessages}`);
-      console.log(`Reading messages from database...`);
-      loadMessages();
-    });
+    const newMessagesSubscription = MeshPeerModule.addListener(
+      "onNewMessages",
+      (data) => {
+        console.log(
+          `${data.count} new messages received! Total messages: ${data.totalMessages}`,
+        );
+        console.log(`Reading messages from database...`);
+        loadMessages();
+      },
+    );
 
     return () => {
       newMessagesSubscription?.remove();
@@ -119,25 +143,34 @@ export default function ChatWindow({ username, emptyStateMessage, chatId = "" }:
   const handleScroll = (event: any) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     const paddingToBottom = 20;
-    const isBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+    const isBottom =
+      layoutMeasurement.height + contentOffset.y >=
+      contentSize.height - paddingToBottom;
     setIsAtBottom(isBottom);
   };
 
   const scrollToBottom = () => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
-  useEffect(scrollToBottom, [showBigStartButton])
+
+  useEffect(scrollToBottom, [showBigStartButton]);
 
   // Auto-scroll to bottom when new messages arrive (if user was already at bottom)
   useEffect(() => {
     if (isAtBottom && messages.length > 0) {
-      setTimeout(() => { scrollToBottom(); }, 5);
+      setTimeout(() => {
+        scrollToBottom();
+      }, 5);
     }
   }, [messages, isAtBottom]);
 
   const sendMessage = useCallback(async () => {
-    const currentUsername = username || 'local-user';
-    const newMessage = await addMessage(inputText.trim(), currentUsername, chatId);
+    const currentUsername = username || "local-user";
+    const newMessage = await addMessage(
+      inputText.trim(),
+      currentUsername,
+      chatId,
+    );
 
     if (inputText.trim()) {
       try {
@@ -147,227 +180,275 @@ export default function ChatWindow({ username, emptyStateMessage, chatId = "" }:
           newMessage.content,
           newMessage.userId,
           newMessage.createdAt.getTime() / 1000,
-          newMessage.chatId
+          newMessage.chatId,
         );
-        setMessages(messages => [...messages, newMessage]);
-        setInputText('');
+        setMessages((messages) => [...messages, newMessage]);
+        setInputText("");
         // Always scroll to bottom when user sends a message
-        setTimeout(() => { scrollToBottom(); }, 5);
+        setTimeout(() => {
+          scrollToBottom();
+        }, 5);
       } catch (error) {
-        console.error('Failed to send message:', error);
-        ToastAndroid.show(`❌ Failed to send message: ${error}`, ToastAndroid.LONG);
+        console.error("Failed to send message:", error);
+        showSnackbar(`Failed to send message: ${error}`);
       }
     }
   }, [username, inputText, chatId]);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 100}
-    >
-      <View style={styles.inner}>
-        {showBigStartButton ? (
-          // Big start button view
-          <View style={styles.startButtonContainer}>
-            <TouchableOpacity 
-              style={styles.bigStartButton}
-              onPress={handleStartButtonPress}
+    <>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 120 : 100}
+      >
+        <Surface style={styles.inner} elevation={0}>
+          {showBigStartButton ? (
+            // Big start button view
+            <Surface style={styles.startButtonContainer} elevation={0}>
+              <Button
+                mode="contained"
+                onPress={handleStartButtonPress}
+                style={styles.bigStartButton}
+                contentStyle={styles.bigStartButtonContent}
+                labelStyle={styles.bigStartButtonText}
+              >
+                I am on the cruise
+              </Button>
+            </Surface>
+          ) : (
+            // Messages list
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.messagesContainer}
+              contentContainerStyle={styles.messagesContent}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+              scrollEnabled={true}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
             >
-              <Text style={styles.bigStartButtonText}>I am on the cruise</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          // Messages list
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.messagesContainer}
-            contentContainerStyle={styles.messagesContent}
-            showsVerticalScrollIndicator={true}
-            keyboardShouldPersistTaps="handled"
-            scrollEnabled={true}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-          >
-            {messages.length === 0 ? (
-              <View style={styles.emptyStateContainer}>
-                <Text style={styles.emptyStateTitle}>Waiting...</Text>
-                {emptyStateMessage && (
-                  <Text style={styles.emptyStateSubtitle}>{emptyStateMessage}</Text>
-                )}
-              </View>
-            ) : (
-              messages.map((message) => {
-                const messageTime = new Date(message.createdAt).toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false
-                });
-                
-                return (
-                  <View key={message.id} style={styles.messageContainer}>
-                    <View style={styles.messageBar} />
-                    <View style={styles.messageContent}>
-                      <Text style={styles.messageText}>
-                        <Text style={styles.username}>{message.userId}</Text>
-                        <Text style={styles.messageBody}>: {message.content}</Text>
-                      </Text>
-                    </View>
-                    <Text style={styles.timestamp}>{messageTime}</Text>
-                  </View>
-                );
-              })
-            )}
-          </ScrollView>
-        )}
+              {messages.length === 0 ? (
+                <Surface style={styles.emptyStateContainer} elevation={0}>
+                  <Text
+                    variant="headlineSmall"
+                    style={[
+                      styles.emptyStateTitle,
+                      { color: theme.colors.onSurfaceVariant },
+                    ]}
+                  >
+                    Waiting...
+                  </Text>
+                  {emptyStateMessage && (
+                    <Text
+                      variant="bodyMedium"
+                      style={[
+                        styles.emptyStateSubtitle,
+                        { color: theme.colors.onSurfaceVariant },
+                      ]}
+                    >
+                      {emptyStateMessage}
+                    </Text>
+                  )}
+                </Surface>
+              ) : (
+                messages.map((message) => {
+                  const messageTime = new Date(
+                    message.createdAt,
+                  ).toLocaleTimeString("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  });
 
-        {/* Input area - always shown but disabled when big button is showing */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Type a message..."
-            placeholderTextColor="#999"
-            multiline={false}
-            onSubmitEditing={sendMessage}
-            returnKeyType="send"
-            blurOnSubmit={false}
-            underlineColorAndroid="transparent"
-            editable={!showBigStartButton}
-          />
-          <TouchableOpacity 
-            style={styles.sendButton} 
-            onPress={sendMessage}
-            disabled={showBigStartButton}
+                  return (
+                    <View key={message.id} style={styles.messageContainer}>
+                      <View style={styles.messageBar} />
+                      <View style={styles.messageContent}>
+                        <Text style={styles.messageText}>
+                          <Text style={styles.username}>{message.userId}</Text>
+                          <Text style={styles.messageBody}>
+                            : {message.content}
+                          </Text>
+                        </Text>
+                      </View>
+                      <Text style={styles.timestamp}>{messageTime}</Text>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+          )}
+
+          {/* Input area - always shown but disabled when big button is showing */}
+          <Surface
+            style={[
+              styles.inputContainer,
+              { backgroundColor: theme.colors.surface },
+            ]}
+            elevation={3}
           >
-            <Text style={styles.sendButtonText}>➤</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+            <View style={styles.inputRow}>
+              <TextInput
+                mode="outlined"
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder="Type a message..."
+                style={[
+                  styles.textInput,
+                  { backgroundColor: theme.colors.surfaceVariant },
+                ]}
+                contentStyle={styles.textInputContent}
+                outlineStyle={styles.textInputOutline}
+                multiline={false}
+                maxLength={500}
+                onSubmitEditing={sendMessage}
+                returnKeyType="send"
+                disabled={showBigStartButton}
+                dense={false}
+              />
+
+              <IconButton
+                icon="send"
+                onPress={sendMessage}
+                disabled={showBigStartButton}
+              />
+            </View>
+          </Surface>
+        </Surface>
+      </KeyboardAvoidingView>
+
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={4000}
+        style={{ backgroundColor: theme.colors.errorContainer }}
+      >
+        {snackbarMessage}
+      </Snackbar>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   inner: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   startButtonContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 40,
-    backgroundColor: '#fff',
   },
   bigStartButton: {
-    backgroundColor: '#FF6B35',
-    paddingVertical: 20,
-    paddingHorizontal: 40,
-    borderRadius: 50,
+    borderRadius: 28,
     minWidth: 250,
   },
+  bigStartButtonContent: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
   bigStartButtonText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: "600",
   },
   messagesContainer: {
     flex: 1,
     paddingHorizontal: 8,
     marginBottom: 10,
     minHeight: 100,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   messagesContent: {
     flexGrow: 1,
-    justifyContent: 'flex-end',
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+    justifyContent: "flex-end",
+    paddingVertical: 16,
   },
   emptyStateContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 20,
-    backgroundColor: '#fff',
   },
   emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#666',
     marginBottom: 8,
+    textAlign: "center",
   },
   emptyStateSubtitle: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
+    textAlign: "center",
   },
-  messageContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginVertical: 8,
+  messageCard: {
+    marginVertical: 6,
+    borderRadius: 16,
+    flexDirection: "row",
+    overflow: "hidden",
+    marginHorizontal: 4,
   },
-  messageBar: {
+  messageAccent: {
     width: 4,
-    backgroundColor: '#007AFF',
-    borderRadius: 2,
-    marginRight: 8,
-    alignSelf: 'stretch',
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
   },
   messageContent: {
     flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    backgroundColor: "transparent",
   },
-  messageText: {
-    fontSize: 16,
-    lineHeight: 20,
+  messageHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  username: {
+    fontWeight: "600",
   },
   timestamp: {
     fontSize: 12,
-    color: '#999',
-    marginLeft: 8,
-    alignSelf: 'flex-start',
   },
-  username: {
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  messageBody: {
-    color: '#333',
+  messageText: {
+    lineHeight: 20,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 12,
   },
   textInput: {
     flex: 1,
-    borderBottomWidth: 2,
-    borderBottomColor: '#333',
-    fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 0,
-    color: '#000',
+    minHeight: 56,
+    maxHeight: 120,
   },
-  sendButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingLeft: 12,
+  textInputContent: {
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  sendButtonText: {
-    color: '#333',
-    fontSize: 24,
-    fontWeight: 'bold',
+  textInputOutline: {
+    borderRadius: 28,
+    borderWidth: 0,
+  },
+  messageContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginVertical: 2,
+  },
+  messageBar: {
+    width: 4,
+    backgroundColor: "#007AFF",
+    borderRadius: 2,
+    alignSelf: "stretch",
+  },
+  messageBody: {
+    color: "#333",
   },
 });
