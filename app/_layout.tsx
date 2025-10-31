@@ -7,7 +7,7 @@ import {
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { PaperProvider, adaptNavigationTheme } from "react-native-paper";
 import { StyleSheet, Text, View } from "react-native";
 import "react-native-reanimated";
 
@@ -17,6 +17,20 @@ import migrations from "@/drizzle/migrations";
 import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
 import "react-native-get-random-values";
 import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
+import { paperTheme } from "@/constants/themes/paperTheme";
+
+const { LightTheme } = adaptNavigationTheme({
+  reactNavigationLight: DefaultTheme,
+});
+
+const navigationTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: paperTheme.colors.primary,
+  },
+};
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -71,17 +85,19 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   return (
-    <ThemeProvider value={DefaultTheme}>
-      <StatusBar
-        style="dark" // there is currently only a light theme, so make the statusbar dark.
-        backgroundColor="transparent"
-        translucent={true}
-      />
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="Welcome" options={{ presentation: "modal" }} />
-      </Stack>
-    </ThemeProvider>
+    <PaperProvider theme={paperTheme}>
+      <ThemeProvider value={navigationTheme}>
+        <StatusBar
+          style="dark" // there is currently only a light theme, so make the statusbar dark.
+          backgroundColor="transparent"
+          translucent={true}
+        />
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="Welcome" options={{ presentation: "modal" }} />
+        </Stack>
+      </ThemeProvider>
+    </PaperProvider>
   );
 }
 

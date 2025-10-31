@@ -1,22 +1,45 @@
-import { StyleSheet, TextInput, ToastAndroid, TouchableOpacity } from 'react-native';
+import { StyleSheet, ScrollView } from "react-native";
+import {
+  Button,
+  Card,
+  Divider,
+  Surface,
+  Text,
+  TextInput,
+  useTheme,
+  Snackbar,
+} from "react-native-paper";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useState } from "react";
+import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
 
-import { Text, View } from '@/components/Themed';
-import MeshPeerModule from '@/modules/mesh_peer_module/src/MeshPeerModule';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
-
-export default function TabTwoScreen() {
+export default function SettingsScreen() {
+  const theme = useTheme();
   const [isServiceRunning, setIsServiceRunning] = useState(false);
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState("");
   const [connectedPeers, setConnectedPeers] = useState<string[]>([]);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarType, setSnackbarType] = useState<
+    "success" | "error" | "info"
+  >("info");
 
   useFocusEffect(
     useCallback(() => {
       checkServiceState();
       loadUsername();
       loadConnectedPeers();
-    }, [])
+    }, []),
   );
+
+  const showSnackbar = (
+    message: string,
+    type: "success" | "error" | "info" = "info",
+  ) => {
+    setSnackbarMessage(message);
+    setSnackbarType(type);
+    setSnackbarVisible(true);
+  };
 
   const loadUsername = async () => {
     try {
@@ -25,7 +48,7 @@ export default function TabTwoScreen() {
         setUsername(storedUsername);
       }
     } catch (error) {
-      console.error('Failed to load username:', error);
+      console.error("Failed to load username:", error);
     }
   };
 
@@ -34,7 +57,7 @@ export default function TabTwoScreen() {
       const peers = await MeshPeerModule.getConnectedPeers();
       setConnectedPeers(peers);
     } catch (error) {
-      console.error('Failed to load connected peers:', error);
+      console.error("Failed to load connected peers:", error);
     }
   };
 
@@ -43,7 +66,7 @@ export default function TabTwoScreen() {
       const running = await MeshPeerModule.isServiceRunning();
       setIsServiceRunning(running);
     } catch (error) {
-      console.error('Failed to check service state:', error);
+      console.error("Failed to check service state:", error);
     }
   };
 
@@ -54,68 +77,220 @@ export default function TabTwoScreen() {
       // Then stop the service
       await MeshPeerModule.stopNearbyService();
       setIsServiceRunning(false);
+      showSnackbar("Service stopped successfully", "success");
     } catch (error) {
-      console.error('Failed to stop service:', error);
-      ToastAndroid.show(`Failed to stop service: ${error}`, ToastAndroid.LONG);
+      console.error("Failed to stop service:", error);
+      showSnackbar(`Failed to stop service: ${error}`, "error");
     }
   };
 
   const handleSaveUsername = async () => {
     if (!username.trim()) {
-      ToastAndroid.show('Username cannot be empty', ToastAndroid.SHORT);
+      showSnackbar("Username cannot be empty", "error");
       return;
     }
     try {
       await MeshPeerModule.setUsername(username.trim());
-      ToastAndroid.show('Username updated successfully', ToastAndroid.SHORT);
+      showSnackbar("Username updated successfully", "success");
     } catch (error) {
-      console.error('Failed to save username:', error);
-      ToastAndroid.show(`Failed to save username: ${error}`, ToastAndroid.LONG);
+      console.error("Failed to save username:", error);
+      showSnackbar(`Failed to save username: ${error}`, "error");
+    }
+  };
+
+  const getSnackbarColor = () => {
+    switch (snackbarType) {
+      case "success":
+        return theme.colors.primary;
+      case "error":
+        return theme.colors.error;
+      default:
+        return theme.colors.surface;
     }
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        {/* Username Section */}
-        <View style={styles.settingSection}>
-          <Text style={styles.sectionLabel}>Username</Text>
-          <View style={styles.usernameContainer}>
-            <TextInput
-              style={styles.usernameInput}
-              value={username}
-              onChangeText={setUsername}
-              placeholder="Enter username"
-              placeholderTextColor="#999"
-            />
-            <TouchableOpacity 
-              style={styles.saveButton}
-              onPress={handleSaveUsername}
-            >
-              <Text style={styles.buttonText}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        
-        {/* Stop Service Button */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={[styles.stopButton, !isServiceRunning && styles.buttonDisabled]}
-            onPress={handleStopService}
-            disabled={!isServiceRunning}
-          >
-            <Text style={styles.buttonText}>Stop Service</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+    <>
+      <Surface
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
+        <ScrollView
+          style={styles.scrollContainer}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={true}
+        >
+          {/* Username Section */}
+          <Card style={styles.settingCard} elevation={2}>
+            <Card.Content>
+              <Text
+                variant="titleMedium"
+                style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
+              >
+                Username Settings
+              </Text>
+              <Text
+                variant="bodySmall"
+                style={[
+                  styles.sectionSubtitle,
+                  { color: theme.colors.onSurfaceVariant },
+                ]}
+              >
+                This name will be visible to other users in the chat
+              </Text>
+              <TextInput
+                mode="outlined"
+                label="Username"
+                value={username}
+                onChangeText={setUsername}
+                placeholder="Enter your username"
+                style={styles.usernameInput}
+                right={<TextInput.Icon icon="account" disabled />}
+              />
+              <Button
+                mode="contained"
+                onPress={handleSaveUsername}
+                style={styles.saveButton}
+                contentStyle={styles.saveButtonContent}
+              >
+                Save Username
+              </Button>
+            </Card.Content>
+          </Card>
 
-      {/* Info Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.infoText}>Cruise Chat v1.0</Text>
-        <Text style={styles.infoText}>Mesh networking for offline communication</Text>
-        <Text style={styles.infoText}>Currently connected: {connectedPeers.length} peer{connectedPeers.length !== 1 && 's'}</Text>
-      </View>
-    </View>
+          {/* Service Control Section */}
+          <Card style={styles.settingCard} elevation={2}>
+            <Card.Content>
+              <Text
+                variant="titleMedium"
+                style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
+              >
+                Service Control
+              </Text>
+              <Text
+                variant="bodySmall"
+                style={[
+                  styles.sectionSubtitle,
+                  { color: theme.colors.onSurfaceVariant },
+                ]}
+              >
+                Manage the mesh networking service
+              </Text>
+
+              <Surface
+                style={[
+                  styles.statusContainer,
+                  { backgroundColor: theme.colors.surfaceVariant },
+                ]}
+                elevation={0}
+              >
+                <Text
+                  variant="labelMedium"
+                  style={{ color: theme.colors.onSurfaceVariant }}
+                >
+                  Service Status:
+                </Text>
+                <Text
+                  variant="bodyMedium"
+                  style={{
+                    color: isServiceRunning
+                      ? theme.colors.tertiary
+                      : theme.colors.error,
+                    fontWeight: "600",
+                  }}
+                >
+                  {isServiceRunning ? "Running" : "Stopped"}
+                </Text>
+              </Surface>
+
+              <Button
+                mode={isServiceRunning ? "contained" : "outlined"}
+                onPress={handleStopService}
+                disabled={!isServiceRunning}
+                style={styles.controlButton}
+                contentStyle={styles.controlButtonContent}
+                buttonColor={isServiceRunning ? theme.colors.error : undefined}
+              >
+                Stop Service
+              </Button>
+            </Card.Content>
+          </Card>
+
+          {/* Connection Status Section */}
+          <Card style={styles.settingCard} elevation={2}>
+            <Card.Content>
+              <Text
+                variant="titleMedium"
+                style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
+              >
+                Connection Status
+              </Text>
+              <Divider style={styles.divider} />
+
+              <Surface
+                style={[
+                  styles.connectionInfo,
+                  { backgroundColor: theme.colors.surfaceVariant },
+                ]}
+                elevation={0}
+              >
+                <Text
+                  variant="bodyLarge"
+                  style={[
+                    styles.connectionCount,
+                    { color: theme.colors.primary },
+                  ]}
+                >
+                  {connectedPeers.length}
+                </Text>
+                <Text
+                  variant="bodyMedium"
+                  style={{ color: theme.colors.onSurfaceVariant }}
+                >
+                  Connected peer{connectedPeers.length !== 1 ? "s" : ""}
+                </Text>
+              </Surface>
+            </Card.Content>
+          </Card>
+        </ScrollView>
+
+        {/* App Info Footer */}
+        <Surface
+          style={[
+            styles.footer,
+            {
+              backgroundColor: theme.colors.surface,
+              borderTopColor: theme.colors.outlineVariant,
+            },
+          ]}
+          elevation={1}
+        >
+          <Text
+            variant="labelMedium"
+            style={[styles.appTitle, { color: theme.colors.primary }]}
+          >
+            Cruise Chat v1.0
+          </Text>
+          <Text
+            variant="bodySmall"
+            style={[
+              styles.appDescription,
+              { color: theme.colors.onSurfaceVariant },
+            ]}
+          >
+            Mesh networking for offline communication
+          </Text>
+        </Surface>
+      </Surface>
+
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={{ backgroundColor: getSnackbarColor() }}
+      >
+        {snackbarMessage}
+      </Snackbar>
+    </>
   );
 }
 
@@ -123,88 +298,76 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 20,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+  scrollContainer: {
+    flex: 1,
   },
   content: {
-    flex: 1,
-    width: '100%',
-    paddingHorizontal: 20,
-    paddingTop: 30,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
-  settingSection: {
-    width: '100%',
-    marginBottom: 30,
+  settingCard: {
+    marginBottom: 16,
+    borderRadius: 12,
   },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: '#333',
-    textAlign: 'center',
+  sectionTitle: {
+    marginBottom: 4,
+    fontWeight: "600",
   },
-  usernameContainer: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  sectionSubtitle: {
+    marginBottom: 16,
+    lineHeight: 18,
   },
   usernameInput: {
-    flex: 1,
-    borderBottomWidth: 2,
-    borderBottomColor: '#333',
-    fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 0,
-    color: '#000',
+    marginBottom: 16,
+    backgroundColor: "transparent",
   },
   saveButton: {
-    backgroundColor: '#555',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 50,
-    alignItems: 'center',
-  },
-  buttonContainer: {
-    marginTop: 30,
-    width: '100%',
-    alignItems: 'center',
-  },
-  stopButton: {
-    backgroundColor: '#FF6B35',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
     borderRadius: 8,
-    minWidth: 200,
   },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
+  saveButtonContent: {
+    paddingVertical: 4,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
+  statusContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  controlButton: {
+    borderRadius: 8,
+  },
+  controlButtonContent: {
+    paddingVertical: 4,
+  },
+  divider: {
+    marginVertical: 12,
+  },
+  connectionInfo: {
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  connectionCount: {
+    fontSize: 32,
+    fontWeight: "700",
+    marginBottom: 4,
   },
   footer: {
-    paddingVertical: 20,
+    paddingVertical: 16,
     paddingHorizontal: 20,
-    alignItems: 'center',
+    alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: '#eee',
   },
-  infoText: {
-    fontSize: 12,
-    color: '#999',
+  appTitle: {
+    fontWeight: "600",
     marginBottom: 4,
-    textAlign: 'center',
+  },
+  appDescription: {
+    textAlign: "center",
+    lineHeight: 18,
   },
 });
