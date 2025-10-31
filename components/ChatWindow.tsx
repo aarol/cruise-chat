@@ -99,6 +99,7 @@ export default function ChatWindow({ username, emptyStateMessage, chatId = "" }:
   useEffect(() => {
     const loadMessages = async () => {
       const dbMessages = await getMessages(chatId);
+      console.log(dbMessages)
       setMessages(dbMessages);
     };
 
@@ -135,7 +136,7 @@ export default function ChatWindow({ username, emptyStateMessage, chatId = "" }:
     }
   }, [messages, isAtBottom]);
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     const currentUsername = username || 'local-user';
     const newMessage = await addMessage(inputText.trim(), currentUsername, chatId);
 
@@ -158,7 +159,7 @@ export default function ChatWindow({ username, emptyStateMessage, chatId = "" }:
         ToastAndroid.show(`❌ Failed to send message: ${error}`, ToastAndroid.LONG);
       }
     }
-  };
+  }, [username, inputText, chatId]);
 
   return (
     <KeyboardAvoidingView

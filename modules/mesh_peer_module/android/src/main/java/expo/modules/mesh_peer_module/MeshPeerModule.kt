@@ -17,9 +17,9 @@ import java.net.URL
 data class Message(
     val id: String,
     val content: String,
-    val sender: String,
-    val time: Long,
-    val chat: String
+    val userId: String,
+    val createdAt: Long,
+    val chatId: String
 )
 
 class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
@@ -182,8 +182,8 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       promise.resolve(null)
     }
 
-    AsyncFunction("sendMessage") {id: String, content: String, sender: String, time: Long, chat: String, promise: Promise ->
-      val message = Message(id=id, content=content, sender=sender, time=time, chat=chat)
+    AsyncFunction("sendMessage") {id: String, content: String, userId: String, createdAt: Long, chatId: String, promise: Promise ->
+      val message = Message(id=id, content=content, userId=userId, createdAt=createdAt, chatId=chatId)
       val success = nearbyService?.sendMessage(message) ?: false
       if (success) {
         promise.resolve(null)

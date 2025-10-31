@@ -235,7 +235,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     fun sendMessage(message: Message): Boolean {
         return try {
             val messageId = message.id
-            val timestamp = message.time
+            val timestamp = message.createdAt
             
             Log.d(TAG, "📤 Sending new message | ID: $messageId | Content: $message")
             
@@ -243,9 +243,9 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 put("type", MSG_TYPE_CHAT_MESSAGE)
                 put("id", message.id)
                 put("content", message.content)
-                put("chat", message.chat)
-                put("sender", message.sender)
-                put("created_at", message.time)
+                put("chat_id", message.chatId)
+                put("user_id", message.userId)
+                put("created_at", message.createdAt)
             }
             
             // Store locally first
@@ -427,9 +427,9 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 val content = messageObj.getString("content")
                 val userId = messageObj.getString("user_id")
                 val createdAt = messageObj.getLong("created_at")
-                val chat = messageObj.optString("chat", "default")
+                val chatId = messageObj.optString("chat_id", "")
                 
-                val message = Message(messageId, content, userId, createdAt, chat)
+                val message = Message(messageId, content, userId, createdAt, chatId)
                 if (storeMessage(message)) {
                     storedCount++
                 }
@@ -452,9 +452,9 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             val message = Message(
                 id = jsonMessage.getString("id"),
                 content = jsonMessage.getString("content"),
-                sender = jsonMessage.optString("sender", endpointId),
-                time = jsonMessage.getLong("created_at"),
-                chat = jsonMessage.optString("chat", "default")
+                userId = jsonMessage.optString("user_id", endpointId),
+                createdAt = jsonMessage.getLong("created_at"),
+                chatId = jsonMessage.optString("chat_id", "")
             )
             
             Log.d(TAG, "📨 Received chat message from $endpointId | ID: ${message.id} | Content: ${message.content}")
@@ -467,9 +467,9 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 val stored = storeMessage(message)
                 Log.d(TAG, "💾 Message stored: $stored | ID: ${message.id}")
                 
-                // Broadcast to all connected peers (except sender)
+                // Broadcast to all connected peers
                 val connectedPeers = connectionHandler.getConnectedPeers().size
-                Log.d(TAG, "📡 Broadcasting message to $connectedPeers peers (excluding sender $endpointId)")
+                Log.d(TAG, "📡 Broadcasting message to $connectedPeers peers")
                 broadcastMessageToOthers(messageData)
                 
                 // Notify listener
@@ -478,9 +478,9 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 Log.d(TAG, "🔔 Notified listener about new message | ID: ${message.id}")
                 
                 // Raise notification if this chat is subscribed
-                if (isSubscribedToNotifications(message.chat)) {
+                if (isSubscribedToNotifications(message.chatId)) {
                     showMessageNotification(message)
-                    Log.d(TAG, "🔔 Raised notification for chat: ${message.chat}")
+                    Log.d(TAG, "🔔 Raised notification for chat: ${message.chatId}")
                 }
             } else {
                 Log.d(TAG, "Message ${message.id} already exists, skipping")
@@ -558,7 +558,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 VALUES (?, ?, ?, ?, ?)
             """.trimIndent()
             
-            database?.execSQL(insertSql, arrayOf(message.id, message.content, message.sender, "text", message.time))
+            database?.execSQL(insertSql, arrayOf(message.id, message.content, message.userId, message.chatId, message.createdAt))
             
             Log.d(TAG, "Stored synced message: ${message.id}")
             return true
@@ -588,11 +588,11 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             )
             
             // Format chat name for display
-            val chatName = if (message.chat.isEmpty()) "General" else message.chat.capitalize()
+            val chatName = if (message.chatId.isEmpty()) "General" else message.chatId.capitalize()
             
             // Build notification
             val notification = NotificationCompat.Builder(this, MESSAGE_NOTIFICATION_CHANNEL)
-                .setContentTitle("$chatName - ${message.sender}")
+                .setContentTitle("$chatName - ${message.userId}")
                 .setContentText(message.content)
                 .setSmallIcon(android.R.drawable.ic_dialog_email)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -601,11 +601,11 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 .setContentIntent(pendingIntent)
                 .build()
             
-            // Use message chat ID as ID to avoid duplicates
-            val notificationId = message.chat.hashCode()
+            // Use message chat ID as notification ID
+            val notificationId = message.chatId.hashCode()
             notificationManager?.notify(notificationId, notification)
             
-            Log.d(TAG, "Notification shown for message from ${message.sender} in chat ${message.chat}")
+            Log.d(TAG, "Notification shown for message from ${message.userId} in chat ${message.chatId}")
         } catch (e: Exception) {
             Log.e(TAG, "Error showing notification: ${e.message}")
         }
