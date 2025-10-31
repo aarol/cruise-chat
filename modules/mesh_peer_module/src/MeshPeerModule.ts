@@ -29,6 +29,13 @@ declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   // State functions
   isServiceRunning(): Promise<boolean>;
   isDiscovering(): Promise<boolean>;
+  
+  // Notification subscription functions
+  subscribeToNotifications(chatId: string): Promise<boolean>;
+  unsubscribeFromNotifications(chatId: string): Promise<boolean>;
+  getNotificationSubscriptions(): Promise<string[]>;
+  isSubscribedToNotifications(chatId: string): Promise<boolean>;
+  clearNotificationSubscriptions(): Promise<void>;
 }
 
 // This call loads the native module object from the JSI.

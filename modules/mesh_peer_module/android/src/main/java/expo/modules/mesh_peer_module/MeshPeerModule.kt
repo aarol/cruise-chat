@@ -286,6 +286,51 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       }
     }
 
+    AsyncFunction("subscribeToNotifications") { chatId: String, promise: Promise ->
+      try {
+        val success = nearbyService?.subscribeToNotifications(chatId) ?: false
+        promise.resolve(success)
+      } catch (e: Exception) {
+        promise.reject("SUBSCRIBE_ERROR", "Failed to subscribe to notifications: ${e.message}", e)
+      }
+    }
+
+    AsyncFunction("unsubscribeFromNotifications") { chatId: String, promise: Promise ->
+      try {
+        val success = nearbyService?.unsubscribeFromNotifications(chatId) ?: false
+        promise.resolve(success)
+      } catch (e: Exception) {
+        promise.reject("UNSUBSCRIBE_ERROR", "Failed to unsubscribe from notifications: ${e.message}", e)
+      }
+    }
+
+    AsyncFunction("getNotificationSubscriptions") { promise: Promise ->
+      try {
+        val subscriptions = nearbyService?.getNotificationSubscriptions() ?: emptyList()
+        promise.resolve(subscriptions)
+      } catch (e: Exception) {
+        promise.reject("GET_SUBSCRIPTIONS_ERROR", "Failed to get notification subscriptions: ${e.message}", e)
+      }
+    }
+
+    AsyncFunction("isSubscribedToNotifications") { chatId: String, promise: Promise ->
+      try {
+        val isSubscribed = nearbyService?.isSubscribedToNotifications(chatId) ?: false
+        promise.resolve(isSubscribed)
+      } catch (e: Exception) {
+        promise.reject("CHECK_SUBSCRIPTION_ERROR", "Failed to check notification subscription: ${e.message}", e)
+      }
+    }
+
+    AsyncFunction("clearNotificationSubscriptions") { promise: Promise ->
+      try {
+        nearbyService?.clearNotificationSubscriptions()
+        promise.resolve(null)
+      } catch (e: Exception) {
+        promise.reject("CLEAR_SUBSCRIPTIONS_ERROR", "Failed to clear notification subscriptions: ${e.message}", e)
+      }
+    }
+
     View(MeshPeerModuleView::class) {
       Prop("url") { view: MeshPeerModuleView, url: URL ->
         view.webView.loadUrl(url.toString())

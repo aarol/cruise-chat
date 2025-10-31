@@ -17,6 +17,18 @@ export default function TabOneScreen() {
 
   useEffect(() => {
     checkUsername();
+    
+    // Subscribe to notifications for General chat (empty string chatId)
+    const subscribeToGeneralChat = async () => {
+      try {
+        await MeshPeerModule.subscribeToNotifications('');
+        console.log('Subscribed to notifications for General chat');
+      } catch (error) {
+        console.error('Failed to subscribe to General chat:', error);
+      }
+    };
+    
+    subscribeToGeneralChat();
   }, []);
 
   const checkUsername = async () => {

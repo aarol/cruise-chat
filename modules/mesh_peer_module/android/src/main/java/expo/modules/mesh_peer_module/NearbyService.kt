@@ -27,7 +27,6 @@ import org.json.JSONArray
 
 class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
-    private val CHANNEL_ID = "nearby_service_channel"
     private val TAG = "NearbyService"
     
     // Message sync protocol types
@@ -35,6 +34,9 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     private val MSG_TYPE_SYNC_RESPONSE = "sync_response"
     private val MSG_TYPE_MESSAGE_BATCH = "message_batch"
     private val MSG_TYPE_CHAT_MESSAGE = "chat_message"
+
+    private val PERMANENT_NOTIFICATION_CHANNEL = "nearby_service_channel"
+    private val MESSAGE_NOTIFICATION_CHANNEL = "message_notification"
     
     private val binder = LocalBinder()
 
@@ -56,6 +58,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     // State tracking
     private var isServiceRunning = false
     private var isDiscovering = false
+    private val notificationSubscriptions = mutableSetOf<String>()
     
     
     inner class LocalBinder : Binder() {
@@ -80,7 +83,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         }
         val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, appIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(this, PERMANENT_NOTIFICATION_CHANNEL)
             .setContentTitle("Nearby Connections")
             .setContentText("Discovering nearby devices...")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -123,6 +126,41 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     public fun isDiscovering(): Boolean {
         return isDiscovering
     }
+    
+    public fun subscribeToNotifications(chatId: String): Boolean {
+        return try {
+            val added = notificationSubscriptions.add(chatId)
+            Log.d(TAG, "Subscribed to notifications for chat: $chatId (already subscribed: ${!added})")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error subscribing to notifications for chat $chatId: ${e.message}")
+            false
+        }
+    }
+    
+    public fun unsubscribeFromNotifications(chatId: String): Boolean {
+        return try {
+            val removed = notificationSubscriptions.remove(chatId)
+            Log.d(TAG, "Unsubscribed from notifications for chat: $chatId (was subscribed: $removed)")
+            removed
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unsubscribing from notifications for chat $chatId: ${e.message}")
+            false
+        }
+    }
+    
+    public fun getNotificationSubscriptions(): List<String> {
+        return notificationSubscriptions.toList()
+    }
+    
+    public fun isSubscribedToNotifications(chatId: String): Boolean {
+        return notificationSubscriptions.contains(chatId)
+    }
+    
+    public fun clearNotificationSubscriptions() {
+        notificationSubscriptions.clear()
+        Log.d(TAG, "Cleared all notification subscriptions")
+    }
 
     fun setListener(listener: NearbyServiceListener?) {
         this.listener = listener
@@ -158,39 +196,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                         MSG_TYPE_SYNC_REQUEST -> handleSyncRequest(endpointId, jsonMessage)
                         MSG_TYPE_SYNC_RESPONSE -> handleSyncResponse(endpointId, jsonMessage)
                         MSG_TYPE_MESSAGE_BATCH -> handleMessageBatch(endpointId, jsonMessage)
-                        MSG_TYPE_CHAT_MESSAGE -> {
-                            // Create message object from JSON
-                            val message = Message(
-                                id = jsonMessage.getString("id"),
-                                content = jsonMessage.getString("content"),
-                                sender = jsonMessage.optString("sender", endpointId),
-                                time = jsonMessage.getLong("created_at"),
-                                chat = jsonMessage.optString("chat", "default")
-                            )
-                            
-                            Log.d(TAG, "📨 Received chat message from $endpointId | ID: ${message.id} | Content: ${message.content}")
-                            
-                            // Check if we already have this message
-                            if (!messageExists(message.id)) {
-                                Log.d(TAG, "✅ New message, storing and broadcasting | ID: ${message.id}")
-                                
-                                // Store message in SQLite database
-                                val stored = storeMessage(message)
-                                Log.d(TAG, "💾 Message stored: $stored | ID: ${message.id}")
-                                
-                                // Broadcast to all connected peers (except sender)
-                                val connectedPeers = connectionHandler.getConnectedPeers().size
-                                Log.d(TAG, "📡 Broadcasting message to $connectedPeers peers (excluding sender $endpointId)")
-                                broadcastMessageToOthers(messageData)
-                                
-                                // Notify listener
-                                listener?.onMessageReceived(endpointId, message.content)
-                                notifyNewMessages(1)
-                                Log.d(TAG, "🔔 Notified listener about new message | ID: ${message.id}")
-                            } else {
-                                Log.d(TAG, "Message ${message.id} already exists, skipping")
-                            }
-                        }
+                        MSG_TYPE_CHAT_MESSAGE -> handleChatMessage(endpointId, jsonMessage, messageData)
                     }
                 } catch (e: Exception) {
                     // If JSON parsing fails, treat as regular chat message for backward compatibility
@@ -440,6 +446,50 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         }
     }
     
+    private fun handleChatMessage(endpointId: String, jsonMessage: JSONObject, messageData: String) {
+        try {
+            // Create message object from JSON
+            val message = Message(
+                id = jsonMessage.getString("id"),
+                content = jsonMessage.getString("content"),
+                sender = jsonMessage.optString("sender", endpointId),
+                time = jsonMessage.getLong("created_at"),
+                chat = jsonMessage.optString("chat", "default")
+            )
+            
+            Log.d(TAG, "📨 Received chat message from $endpointId | ID: ${message.id} | Content: ${message.content}")
+            
+            // Check if we already have this message
+            if (!messageExists(message.id)) {
+                Log.d(TAG, "✅ New message, storing and broadcasting | ID: ${message.id}")
+                
+                // Store message in SQLite database
+                val stored = storeMessage(message)
+                Log.d(TAG, "💾 Message stored: $stored | ID: ${message.id}")
+                
+                // Broadcast to all connected peers (except sender)
+                val connectedPeers = connectionHandler.getConnectedPeers().size
+                Log.d(TAG, "📡 Broadcasting message to $connectedPeers peers (excluding sender $endpointId)")
+                broadcastMessageToOthers(messageData)
+                
+                // Notify listener
+                listener?.onMessageReceived(endpointId, message.content)
+                notifyNewMessages(1)
+                Log.d(TAG, "🔔 Notified listener about new message | ID: ${message.id}")
+                
+                // Raise notification if this chat is subscribed
+                if (isSubscribedToNotifications(message.chat)) {
+                    showMessageNotification(message)
+                    Log.d(TAG, "🔔 Raised notification for chat: ${message.chat}")
+                }
+            } else {
+                Log.d(TAG, "Message ${message.id} already exists, skipping")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling chat message from $endpointId: ${e.message}")
+        }
+    }
+    
     private fun sendMessageBatch(endpointId: String, messageIds: List<String>) {
         try {
             val messages = getMessagesByIds(messageIds)
@@ -522,10 +572,51 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         }
     }
 
+    private fun showMessageNotification(message: Message) {
+        try {
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            
+            // Create intent to open the app
+            val appIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                this, 
+                0, 
+                appIntent, 
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            // Format chat name for display
+            val chatName = if (message.chat.isEmpty()) "General" else message.chat.capitalize()
+            
+            // Build notification
+            val notification = NotificationCompat.Builder(this, MESSAGE_NOTIFICATION_CHANNEL)
+                .setContentTitle("$chatName - ${message.sender}")
+                .setContentText(message.content)
+                .setSmallIcon(android.R.drawable.ic_dialog_email)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build()
+            
+            // Use message chat ID as ID to avoid duplicates
+            val notificationId = message.chat.hashCode()
+            notificationManager?.notify(notificationId, notification)
+            
+            Log.d(TAG, "Notification shown for message from ${message.sender} in chat ${message.chat}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing notification: ${e.message}")
+        }
+    }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(NotificationManager::class.java)
+
             val serviceChannel = NotificationChannel(
-                CHANNEL_ID,
+                PERMANENT_NOTIFICATION_CHANNEL,
                 "Nearby Service Channel",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
@@ -533,8 +624,19 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 setShowBadge(true)
                 lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
-            val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(serviceChannel)
+
+            val messageChannel = NotificationChannel(
+                MESSAGE_NOTIFICATION_CHANNEL,
+                "Message Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for new chat messages"
+                setShowBadge(true)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+                enableVibration(true)
+            }
+            manager?.createNotificationChannel(messageChannel)
         }
     }
 

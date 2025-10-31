@@ -13,8 +13,8 @@ export default function MessagesScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const [username, setUsername] = useState<string | null>(null);
-  const [chatId, setChatId] = useState('Default');
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [chatId, setChatId] = useState('default');
+  const [showEditModal, setShowEditModal] = useState(true);
   const [tempChatId, setTempChatId] = useState('');
 
   const handleEditChatId = useCallback(() => {
@@ -39,15 +39,38 @@ export default function MessagesScreen() {
     });
   }, [navigation, handleEditChatId]);
 
-  const handleSaveChatId = () => {
+  const handleSaveChatId = async () => {
     if (tempChatId.trim()) {
-      setChatId(tempChatId.trim().toLowerCase());
+      const newChatId = tempChatId.trim().toLowerCase();
+      
+      // Unsubscribe from old chat and subscribe to new one
+      try {
+        await MeshPeerModule.unsubscribeFromNotifications(chatId);
+        await MeshPeerModule.subscribeToNotifications(newChatId);
+        console.log(`Switched notifications from '${chatId}' to '${newChatId}'`);
+      } catch (error) {
+        console.error('Failed to update notification subscriptions:', error);
+      }
+      
+      setChatId(newChatId);
     }
     setShowEditModal(false);
   };
 
   useEffect(() => { setTempChatId(chatId); }, [chatId]);
   useEffect(() => { checkUsername(); }, []);
+  useEffect(() => {
+    const subscribeToInitialChat = async () => {
+      try {
+        await MeshPeerModule.subscribeToNotifications(chatId);
+        console.log(`Subscribed to notifications for '${chatId}'`);
+      } catch (error) {
+        console.error('Failed to subscribe to initial chat:', error);
+      }
+    };
+    
+    subscribeToInitialChat();
+  }, []);
 
   const checkUsername = async () => {
     try {
