@@ -1,18 +1,18 @@
-import { StyleSheet, ScrollView } from "react-native";
+import { getMessageCount } from "@/database/services";
+import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useState } from "react";
+import { ScrollView, StyleSheet } from "react-native";
 import {
   Button,
   Card,
   Divider,
+  Snackbar,
   Surface,
   Text,
   TextInput,
   useTheme,
-  Snackbar,
 } from "react-native-paper";
-import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useState } from "react";
-import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
-import { getMessageCount } from "@/database/services";
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -249,14 +249,14 @@ export default function SettingsScreen() {
                   variant="bodyLarge"
                   style={[
                     styles.connectionCount,
-                    { color: theme.colors.primary },
+                    { color: theme.colors.secondary },
                   ]}
                 >
                   {connectedPeers.length}
                 </Text>
                 <Text
                   variant="bodyMedium"
-                  style={{ color: theme.colors.onSurfaceVariant }}
+                  style={{ color: theme.colors.onSurface }}
                 >
                   Connected peer{connectedPeers.length !== 1 ? "s" : ""}
                 </Text>

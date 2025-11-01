@@ -6,7 +6,7 @@ const generatedTheme = {
     onPrimary: "#FFFFFF",
     primaryContainer: "#E6D89D",
     onPrimaryContainer: "#332900",
-    secondary: "#FFCF00",
+    secondary: "#c5a100ff",
     onSecondary: "#FFFFFF",
     secondaryContainer: "#E6D89D",
     onSecondaryContainer: "#002133",

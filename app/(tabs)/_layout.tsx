@@ -5,16 +5,14 @@ import {
   ParamListBase,
   TabNavigationState,
 } from "@react-navigation/native";
-import {
-  Tabs,
-  withLayoutContext
-} from "expo-router";
+import { Tabs, withLayoutContext } from "expo-router";
 import React from "react";
 import {
   BottomNavigation,
   MaterialBottomTabNavigationEventMap,
   MaterialBottomTabNavigationOptions,
-  useTheme
+  useTheme,
+  Text,
 } from "react-native-paper";
 
 const { Navigator } = createBottomTabNavigator();
@@ -78,9 +76,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "General Chat",
-          
           tabBarIcon: ({ color, size = 24 }) => (
-            <MaterialCommunityIcons name="chat" color={color} size={size} />
+            <MaterialIcons name="message" color={color} size={size} />
           ),
           tabBarLabel: "Chat",
         }}
@@ -100,11 +97,7 @@ export default function TabLayout() {
         options={{
           title: "Settings",
           tabBarIcon: ({ color, size = 24 }) => (
-            <MaterialIcons
-              name="settings"
-              color={color}
-              size={size}
-            />
+            <MaterialIcons name="settings" color={color} size={size} />
           ),
           tabBarLabel: "Settings",
         }}
