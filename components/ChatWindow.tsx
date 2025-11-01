@@ -21,6 +21,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Message } from "@/database/schema";
 import { addMessage, getMessages } from "@/database/services";
 import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
+import { usePeerStatus } from "./usePeerStatus";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -42,31 +43,14 @@ export default function ChatWindow({
   const [inputText, setInputText] = useState("");
   const scrollViewRef = useRef<ScrollView>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const [showBigStartButton, setShowBigStartButton] = useState(true);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-
-  // Check service state when component focuses
-  useFocusEffect(
-    useCallback(() => {
-      checkServiceState();
-    }, []),
-  );
+  const { peerStatus, actions } = usePeerStatus();
+  const { isServiceRunning, isDiscovering } = peerStatus;
 
   const showSnackbar = (message: string) => {
     setSnackbarMessage(message);
     setSnackbarVisible(true);
-  };
-
-  const checkServiceState = async () => {
-    try {
-      const isRunning = await MeshPeerModule.isServiceRunning();
-      const discovering = await MeshPeerModule.isDiscovering();
-      // If service is running or discovering, hide the big start button
-      setShowBigStartButton(!isRunning && !discovering);
-    } catch (error) {
-      console.error("Failed to check service state:", error);
-    }
   };
 
   const requestPermissions = async () => {
@@ -80,38 +64,14 @@ export default function ChatWindow({
     }
   };
 
-  const startDiscovery = async () => {
-    try {
-      const hasPermissions = await requestPermissions();
-      if (!hasPermissions) return;
-      await MeshPeerModule.startDiscovery();
-      console.log("Discovery started");
-      await checkServiceState();
-    } catch (error) {
-      showSnackbar(`Failed to start discovery: ${error}`);
-    }
-  };
-
   const handleStartButtonPress = async () => {
-    // Check if service is already running
-    const isRunning = await MeshPeerModule.isServiceRunning();
-
-    // Start service first if not running
-    if (!isRunning) {
-      try {
-        await MeshPeerModule.startNearbyService();
-        console.log("Service started");
-      } catch (err) {
-        console.error("Failed to start service:", err);
-        showSnackbar(`Failed to start service: ${err}`);
-        return;
-      }
-      // Wait a bit to allow it to start (TODO: fix this hack)
-      await sleep(100);
+    const granted = await MeshPeerModule.requestPermissions();
+    if (!granted) {
+      showSnackbar("Please accept the permissions.");
+      return;
     }
-
-    // Then start discovery
-    await startDiscovery();
+    await actions.startService();
+    await actions.startDiscovery(); // TODO: shouldn't need to call this from UI
   };
 
   // Load messages from database on mount and listen for new messages
@@ -153,7 +113,9 @@ export default function ChatWindow({
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
 
-  useEffect(scrollToBottom, [showBigStartButton]);
+  const showStartButton = !isDiscovering || !isServiceRunning;
+
+  useEffect(scrollToBottom, [showStartButton]);
 
   // Auto-scroll to bottom when new messages arrive (if user was already at bottom)
   useEffect(() => {
@@ -203,7 +165,7 @@ export default function ChatWindow({
         keyboardVerticalOffset={Platform.OS === "ios" ? 120 : 100}
       >
         <Surface style={styles.inner} elevation={0}>
-          {showBigStartButton ? (
+          {showStartButton ? (
             // Big start button view
             <Surface style={styles.startButtonContainer} elevation={0}>
               <Button
@@ -304,14 +266,14 @@ export default function ChatWindow({
                 maxLength={500}
                 onSubmitEditing={sendMessage}
                 returnKeyType="send"
-                disabled={showBigStartButton}
+                disabled={isServiceRunning}
                 dense={false}
               />
 
               <IconButton
                 icon="send"
                 onPress={sendMessage}
-                disabled={showBigStartButton}
+                disabled={isServiceRunning}
               />
             </View>
           </Surface>

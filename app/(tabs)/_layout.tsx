@@ -1,3 +1,5 @@
+import { ConnectedPeersStatus } from "@/components/ConnectedPeersStatus";
+import { usePeerStatus } from "@/components/usePeerStatus";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import {
@@ -79,6 +81,9 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size = 24 }) => (
             <MaterialIcons name="message" color={color} size={size} />
           ),
+          headerRight(props) {
+            return <ConnectedPeersStatus />;
+          },
           tabBarLabel: "Chat",
         }}
       />

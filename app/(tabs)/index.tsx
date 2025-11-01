@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 export default function TabOneScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const [connectedPeers, setConnectedPeers] = useState<string[]>([]);
   const [username, setUsername] = useState<string | null>(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -57,58 +56,6 @@ export default function TabOneScreen() {
       router.push("/Welcome");
     }
   };
-
-  useEffect(() => {
-    // New Nearby Connections listeners
-    const peerDiscoveredSubscription = MeshPeerModule.addListener(
-      "onPeerDiscovered",
-      (peerInfo) => {
-        // console.log('Peer discovered:', peerInfo);
-      },
-    );
-
-    const peerConnectedSubscription = MeshPeerModule.addListener(
-      "onPeerConnected",
-      (data) => {
-        console.log("Peer connected:", data.endpointId);
-        showSnackbar("✅ Connected to peer", "success");
-        // Refresh connected peers list
-        MeshPeerModule.getConnectedPeers().then(setConnectedPeers);
-      },
-    );
-
-    const peerDisconnectedSubscription = MeshPeerModule.addListener(
-      "onPeerDisconnected",
-      (data) => {
-        console.log("Peer disconnected:", data.endpointId);
-        showSnackbar("❌ Peer disconnected", "error");
-        MeshPeerModule.getConnectedPeers().then(setConnectedPeers);
-      },
-    );
-
-    const debugMessagesSubscription = MeshPeerModule.addListener(
-      "onDebug",
-      (data) => {
-        console.log("Native debug:", data.message);
-      },
-    );
-
-    const errorMessagesSubscription = MeshPeerModule.addListener(
-      "onError",
-      (data) => {
-        console.log("Error:", data.error);
-        showSnackbar(`❌ Error: ${data.error}`, "error");
-      },
-    );
-
-    return () => {
-      peerDiscoveredSubscription?.remove();
-      peerConnectedSubscription?.remove();
-      peerDisconnectedSubscription?.remove();
-      debugMessagesSubscription?.remove();
-      errorMessagesSubscription?.remove();
-    };
-  }, []);
 
   const getSnackbarColor = () => {
     switch (snackbarType) {

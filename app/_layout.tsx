@@ -1,11 +1,10 @@
+import { ConnectedPeersStatus } from "@/components/ConnectedPeersStatus";
+import PeerStatusProvider from "@/components/usePeerStatus";
 import { paperTheme } from "@/constants/themes/paperTheme";
 import db from "@/database";
 import migrations from "@/drizzle/migrations";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import {
-  DefaultTheme,
-  ThemeProvider
-} from "@react-navigation/native";
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
@@ -33,7 +32,7 @@ const customTheme = {
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary
+  ErrorBoundary,
 } from "expo-router";
 
 export const unstable_settings = {
@@ -86,15 +85,17 @@ function RootLayoutNav() {
   return (
     <PaperProvider theme={paperTheme}>
       <ThemeProvider value={customTheme}>
-        <StatusBar
-          style="dark" // there is currently only a light theme, so make the statusbar dark.
-          backgroundColor="transparent"
-          translucent={true}
-        />
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="Welcome" options={{ presentation: "modal" }} />
-        </Stack>
+        <PeerStatusProvider>
+          <StatusBar
+            style="dark" // there is currently only a light theme, so make the statusbar dark.
+            backgroundColor="transparent"
+            translucent={true}
+          />
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="Welcome" options={{ presentation: "modal" }} />
+          </Stack>
+        </PeerStatusProvider>
       </ThemeProvider>
     </PaperProvider>
   );

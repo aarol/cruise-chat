@@ -1,3 +1,4 @@
+import { usePeerStatus } from "@/components/usePeerStatus";
 import { getMessageCount } from "@/database/services";
 import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
 import { useFocusEffect } from "@react-navigation/native";
@@ -16,21 +17,19 @@ import {
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const [isServiceRunning, setIsServiceRunning] = useState(false);
   const [username, setUsername] = useState("");
-  const [connectedPeers, setConnectedPeers] = useState<string[]>([]);
   const [messageCount, setMessageCount] = useState(0);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarType, setSnackbarType] = useState<
     "success" | "error" | "info"
   >("info");
-
+  const { peerStatus, actions } = usePeerStatus();
+  const { isServiceRunning, connectedPeers } = peerStatus;
+  console.log({ isServiceRunning });
   useFocusEffect(
     useCallback(() => {
-      checkServiceState();
       loadUsername();
-      loadConnectedPeers();
       loadMessageCount();
     }, []),
   );
@@ -55,44 +54,12 @@ export default function SettingsScreen() {
     }
   };
 
-  const loadConnectedPeers = async () => {
-    try {
-      const peers = await MeshPeerModule.getConnectedPeers();
-      setConnectedPeers(peers);
-    } catch (error) {
-      console.error("Failed to load connected peers:", error);
-    }
-  };
-
   const loadMessageCount = async () => {
     try {
       const count = await getMessageCount();
       setMessageCount(count);
     } catch (error) {
       console.error("Failed to load message count:", error);
-    }
-  };
-
-  const checkServiceState = async () => {
-    try {
-      const running = await MeshPeerModule.isServiceRunning();
-      setIsServiceRunning(running);
-    } catch (error) {
-      console.error("Failed to check service state:", error);
-    }
-  };
-
-  const handleStopService = async () => {
-    try {
-      // Stop discovery first
-      await MeshPeerModule.stopDiscovery();
-      // Then stop the service
-      await MeshPeerModule.stopNearbyService();
-      setIsServiceRunning(false);
-      showSnackbar("Service stopped successfully", "success");
-    } catch (error) {
-      console.error("Failed to stop service:", error);
-      showSnackbar(`Failed to stop service: ${error}`, "error");
     }
   };
 
@@ -216,7 +183,7 @@ export default function SettingsScreen() {
 
               <Button
                 mode={isServiceRunning ? "contained" : "outlined"}
-                onPress={handleStopService}
+                onPress={() => actions.stopService()}
                 disabled={!isServiceRunning}
                 style={styles.controlButton}
                 contentStyle={styles.controlButtonContent}

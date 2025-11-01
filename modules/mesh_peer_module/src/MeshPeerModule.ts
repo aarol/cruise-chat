@@ -6,7 +6,7 @@ import { MeshPeerModuleEvents } from "./MeshPeerModule.types";
 declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   PI: number;
 
-  requestPermissions(): Promise<{ granted: boolean; permissions?: string[] }>;
+  requestPermissions(): Promise<boolean>;
   checkPermissions(): Promise<{ granted: boolean }>;
 
   // New Nearby Connections functions
