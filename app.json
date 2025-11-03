@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "cruise-chat",
-    "slug": "cruise-chat",
+    "name": "Cruise chat",
+    "slug": "Cruise chat",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
