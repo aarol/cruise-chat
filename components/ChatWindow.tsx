@@ -1,22 +1,22 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
-import {
-  Button,
-  Surface,
-  Text,
-  TextInput,
-  useTheme,
-  Snackbar,
-  FAB,
-  IconButton,
-} from "react-native-paper";
-import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import
+  {
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    View,
+  } from "react-native";
+import
+  {
+    Button,
+    IconButton,
+    Snackbar,
+    Surface,
+    Text,
+    TextInput,
+    useTheme
+  } from "react-native-paper";
 
 import { Message } from "@/database/schema";
 import { addMessage, getMessages } from "@/database/services";
@@ -53,17 +53,6 @@ export default function ChatWindow({
     setSnackbarVisible(true);
   };
 
-  const requestPermissions = async () => {
-    try {
-      await MeshPeerModule.requestPermissions();
-      return true;
-    } catch (error) {
-      console.error("Permission request failed:", error);
-      showSnackbar(`Permission request failed: ${error}`);
-      return false;
-    }
-  };
-
   const handleStartButtonPress = async () => {
     const granted = await MeshPeerModule.requestPermissions();
     if (!granted) {
@@ -71,6 +60,7 @@ export default function ChatWindow({
       return;
     }
     await actions.startService();
+    await sleep(100) // TODO: Fix this dirty hack? It will error if we don't wait for it to start
     await actions.startDiscovery(); // TODO: shouldn't need to call this from UI
   };
 
@@ -110,7 +100,14 @@ export default function ChatWindow({
   };
 
   const scrollToBottom = () => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
+    scrollViewRef.current?.scrollToEnd({ animated: false });
+  };
+
+  const handleTextInputFocus = () => {
+    // Scroll to bottom when keyboard opens
+    setTimeout(() => {
+      scrollToBottom();
+    }, 5);
   };
 
   const showStartButton = !isDiscovering || !isServiceRunning;
@@ -266,14 +263,15 @@ export default function ChatWindow({
                 maxLength={500}
                 onSubmitEditing={sendMessage}
                 returnKeyType="send"
-                disabled={isServiceRunning}
+                disabled={showStartButton}
                 dense={false}
+                onFocus={handleTextInputFocus}
               />
 
               <IconButton
                 icon="send"
                 onPress={sendMessage}
-                disabled={isServiceRunning}
+                disabled={showStartButton}
               />
             </View>
           </Surface>
