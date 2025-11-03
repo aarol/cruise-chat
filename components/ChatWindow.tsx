@@ -1,6 +1,8 @@
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { useCallback, useEffect, useRef, useState } from "react";
 import
   {
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -27,6 +29,24 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Video component wrapper
+function VideoMessage({ source, style }: { source: any; style: any }) {
+  const player = useVideoPlayer(source, (player) => {
+    player.loop = true;
+    player.play();
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={style}
+      contentFit="contain"
+      nativeControls={false}
+      pointerEvents="none"
+    />
+  );
+}
+
 interface ChatWindowProps {
   username: string | null;
   emptyStateMessage?: string;
@@ -47,6 +67,24 @@ export default function ChatWindow({
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const { peerStatus, actions } = usePeerStatus();
   const { isServiceRunning, isDiscovering } = peerStatus;
+
+  // Define media types for special chat keywords
+  interface MediaItem {
+    source: any;
+    type: 'image' | 'video';
+  }
+
+  const specialChats: Record<string, MediaItem[]> = {
+    "ship1": [
+      { source: require('@/assets/chats/ship1.mp4'), type: 'video' }
+    ],
+    "ship2": [
+      { source: require('@/assets/chats/ship2.mp4'), type: 'video' }
+    ],
+    "icon": [
+      { source: require('@/assets/images/icon.png'), type: 'image' }
+    ]
+  };
 
   const showSnackbar = (message: string) => {
     setSnackbarMessage(message);
@@ -154,6 +192,45 @@ export default function ChatWindow({
     }
   }, [username, inputText, chatId]);
 
+  const GetMessageContent = (message: Message) => {
+    const messageLower = message.content.toLowerCase();
+    const mediaItems = specialChats[messageLower];
+
+    // Display media if one of the keywords
+    if (mediaItems && mediaItems.length > 0) {
+      return <>
+        <Text style={styles.username}>{message.userId}:</Text>
+        {mediaItems.map((item, index) => {
+          if (item.type === 'video') {
+            return (
+              <VideoMessage
+                key={index}
+                source={item.source}
+                style={styles.messageImage}
+              />
+            );
+          } else {
+            return (
+              <Image 
+                key={index}
+                source={item.source}
+                style={styles.messageImage}
+                resizeMode="contain"
+              />
+            );
+          }
+        })}
+      </>
+    } else {
+      return <Text style={styles.messageContainer}>
+        <Text style={styles.username}>{message.userId}: </Text>
+        <Text style={styles.messageBody}>
+          {message.content}
+        </Text>
+      </Text>
+    }
+  }
+
   return (
     <>
       <KeyboardAvoidingView
@@ -224,12 +301,7 @@ export default function ChatWindow({
                     <View key={message.id} style={styles.messageContainer}>
                       <View style={styles.messageBar} />
                       <View style={styles.messageContent}>
-                        <Text style={styles.messageText}>
-                          <Text style={styles.username}>{message.userId}</Text>
-                          <Text style={styles.messageBody}>
-                            : {message.content}
-                          </Text>
-                        </Text>
+                        {GetMessageContent(message)}
                       </View>
                       <Text style={styles.timestamp}>{messageTime}</Text>
                     </View>
@@ -410,5 +482,11 @@ const styles = StyleSheet.create({
   },
   messageBody: {
     color: "#333",
+  },
+  messageImage: {
+    width: 120,
+    height: 120,
+    marginRight: 8,
+    borderRadius: 4,
   },
 });
