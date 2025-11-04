@@ -1,28 +1,28 @@
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useCallback, useEffect, useRef, useState } from "react";
-import
-  {
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    View,
-  } from "react-native";
-import
-  {
-    Button,
-    IconButton,
-    Snackbar,
-    Surface,
-    Text,
-    TextInput,
-    useTheme
-  } from "react-native-paper";
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
+import {
+  Button,
+  IconButton,
+  Snackbar,
+  Surface,
+  Text,
+  TextInput,
+  useTheme
+} from "react-native-paper";
 
 import { Message } from "@/database/schema";
 import { addMessage, getMessages } from "@/database/services";
 import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
+import assetManifest from './stickerManifest';
+import StickerPicker from './StickerPicker';
 import { usePeerStatus } from "./usePeerStatus";
 
 function sleep(ms: number) {
@@ -73,8 +73,9 @@ export default function ChatWindow({
     source: any;
     type: 'image' | 'video';
   }
-
-  // This maps a keyword from the user into an asset. Add here to send new gifs
+  // Legacy: this maps a keyword from plain text messages into assets.
+  // We'll try parsing JSON content first (new approach). Keep this for
+  // backward compatibility with older plain text shortcuts.
   const specialChats: Record<string, MediaItem[]> = {
     "ship1": [
       { source: require('@/assets/chats/ship1.mp4'), type: 'video' }
@@ -85,6 +86,20 @@ export default function ChatWindow({
     "icon": [
       { source: require('@/assets/images/icon.png'), type: 'image' }
     ]
+  };
+
+  // Try to parse a message.content value as JSON; if it is structured
+  // (for example: { kind: 'sticker', id: 'sticker_ship1', asset: '...' })
+  // return the parsed object; otherwise return null.
+  const tryParseContent = (content: string) => {
+    if (!content) return null;
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed && typeof parsed === 'object') return parsed;
+      return null;
+    } catch (e) {
+      return null;
+    }
   };
 
   const showSnackbar = (message: string) => {
@@ -151,6 +166,8 @@ export default function ChatWindow({
 
   const showStartButton = !isDiscovering || !isServiceRunning;
 
+  const [pickerVisible, setPickerVisible] = useState(false);
+
   useEffect(scrollToBottom, [showStartButton]);
 
   // Auto-scroll to bottom when new messages arrive (if user was already at bottom)
@@ -193,11 +210,62 @@ export default function ChatWindow({
     }
   }, [username, inputText, chatId]);
 
+  const sendSticker = useCallback(async (stickerId: string) => {
+    const currentUsername = username || 'local-user';
+    const payload = { kind: 'sticker', id: stickerId };
+    const payloadStr = JSON.stringify(payload);
+
+    try {
+      const newMessage = await addMessage(payloadStr, currentUsername, chatId);
+      await MeshPeerModule.sendMessage(
+        newMessage.id,
+        newMessage.content,
+        newMessage.userId,
+        newMessage.createdAt.getTime() / 1000,
+        newMessage.chatId,
+      );
+      setMessages((messages) => [...messages, newMessage]);
+      setPickerVisible(false);
+      setTimeout(() => scrollToBottom(), 5);
+    } catch (error) {
+      console.error('Failed to send sticker:', error);
+      showSnackbar(`Failed to send sticker: ${error}`);
+    }
+  }, [username, chatId]);
+
   const GetMessageContent = (message: Message) => {
+    // First, try structured JSON payloads stored in content (new approach).
+    const parsed = tryParseContent(message.content);
+    if (parsed && parsed.kind) {
+      const kind = parsed.kind as string;
+      const id = parsed.id ?? parsed.stickerId ?? parsed.asset ?? null;
+
+      // Resolve asset from manifest if present
+      const manifestItem = id ? assetManifest[id] : null;
+
+      if (manifestItem) {
+        return <>
+          <Text style={styles.username}>{message.userId}:</Text>
+          {(manifestItem as any).type === 'video' ? (
+            <VideoMessage source={manifestItem.source} style={styles.messageImage} />
+          ) : (
+            <Image source={manifestItem.source} style={styles.messageImage} resizeMode="contain" />
+          )}
+        </>;
+      }
+      // Unknown structured payload: show a small placeholder text
+      return <Text style={styles.messageContainer}>
+        <Text style={styles.username}>{message.userId}: </Text>
+        <Text style={styles.messageBody}>
+          [unsupported message]
+        </Text>
+      </Text>;
+    }
+
+    // Fallback: legacy behavior (plain text keywords -> specialChats)
     const messageLower = message.content.toLowerCase();
     const mediaItems = specialChats[messageLower];
 
-    // Display media if one of the keywords
     if (mediaItems && mediaItems.length > 0) {
       return <>
         <Text style={styles.username}>{message.userId}:</Text>
@@ -321,6 +389,12 @@ export default function ChatWindow({
             elevation={3}
           >
             <View style={styles.inputRow}>
+              <IconButton
+                icon="sticker-emoji"
+                onPress={() => setPickerVisible(true)}
+                disabled={showStartButton}
+              />
+
               <TextInput
                 mode="outlined"
                 value={inputText}
@@ -359,6 +433,7 @@ export default function ChatWindow({
       >
         {snackbarMessage}
       </Snackbar>
+      <StickerPicker visible={pickerVisible} onDismiss={() => setPickerVisible(false)} onSelect={sendSticker} />
     </>
   );
 }
