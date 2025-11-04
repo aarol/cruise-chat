@@ -108,7 +108,9 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
     public fun startFindConnections(): Boolean {
         val res1: Boolean = connectionHandler.startDiscovery()
+        Log.d(TAG, "Started discovery: $res1")
         val res2: Boolean = connectionHandler.startAdvertising()
+        Log.d(TAG, "Started advertising: $res2")
         isDiscovering = res1 && res2
         return isDiscovering
     }
