@@ -74,6 +74,7 @@ export default function ChatWindow({
     type: 'image' | 'video';
   }
 
+  // This maps a keyword from the user into an asset. Add here to send new gifs
   const specialChats: Record<string, MediaItem[]> = {
     "ship1": [
       { source: require('@/assets/chats/ship1.mp4'), type: 'video' }
@@ -105,7 +106,7 @@ export default function ChatWindow({
   // Load messages from database on mount and listen for new messages
   useEffect(() => {
     const loadMessages = async () => {
-      const dbMessages = await getMessages(chatId);
+      const dbMessages = await getMessages(chatId, 100);
       setMessages(dbMessages);
     };
 

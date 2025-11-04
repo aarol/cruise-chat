@@ -267,6 +267,52 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         }
     }
     
+    fun getRelevantMessageIds(): List<String> {
+        val messageIds = mutableListOf<String>()
+        
+        try {
+            // First, get all distinct chatIds
+            val chatIdCursor = database!!.rawQuery("SELECT DISTINCT chat_id FROM messages", null)
+            val chatIds = mutableListOf<String>()
+            
+            chatIdCursor.use {
+                if (it.moveToFirst()) {
+                    do {
+                        val chatId = it.getString(it.getColumnIndexOrThrow("chat_id"))
+                        chatIds.add(chatId)
+                    } while (it.moveToNext())
+                }
+            }
+            
+            // For each chatId, get the last 100 messages
+            for (chatId in chatIds) {
+                val cursor = database!!.rawQuery(
+                    "SELECT id FROM messages WHERE chat_id = ? ORDER BY created_at DESC LIMIT 100",
+                    arrayOf(chatId)
+                )
+                
+                cursor.use {
+                    if (it.moveToFirst()) {
+                        do {
+                            val messageId = it.getString(it.getColumnIndexOrThrow("id"))
+                            messageIds.add(messageId)
+                        } while (it.moveToNext())
+                    }
+                }
+            }
+            
+        } catch (e: SQLiteException) {
+            Log.e(TAG, "SQLite error getting message IDs: ${e.message}")
+            // Try to recover by reinitializing database
+            initializeDatabase()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting message IDs: ${e.message}")
+        }
+        
+        return messageIds
+    }
+
+    // Note: The function might be slow on devices with a lot of messages. Prefer getRelevantMessageIds
     fun getAllMessageIds(): List<String> {
         val messageIds = mutableListOf<String>()
         
@@ -352,7 +398,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     
     private fun initiateSyncWithPeer(endpointId: String) {
         try {
-            val knownMessageIds = getAllMessageIds()
+            val knownMessageIds = getRelevantMessageIds()
             val syncRequest = JSONObject().apply {
                 put("type", MSG_TYPE_SYNC_REQUEST)
                 put("messageIds", JSONArray(knownMessageIds))

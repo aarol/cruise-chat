@@ -231,12 +231,21 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       }
     }
 
-    AsyncFunction("getAllMessageIds") { promise: Promise ->
+    AsyncFunction("getRelevantMessageIds") { promise: Promise ->
       try {
-        val messageIds = nearbyService?.getAllMessageIds() ?: emptyList()
+        val messageIds = nearbyService?.getRelevantMessageIds() ?: emptyList()
         promise.resolve(messageIds)
       } catch (e: Exception) {
         promise.reject("DATABASE_ERROR", "Failed to get message IDs: ${e.message}", e)
+      }
+    }
+
+    AsyncFunction("getMessageCount") { promise: Promise ->
+      try {
+        val count = nearbyService?.getMessageCount() ?: 0
+        promise.resolve(count)
+      } catch (e: Exception) {
+        promise.reject("DATABASE_ERROR", "Failed to get message count: ${e.message}", e)
       }
     }
 

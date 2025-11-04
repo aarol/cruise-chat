@@ -41,6 +41,10 @@ export default function MessagesScreen() {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      title:
+        chatId.length > 0
+          ? "Room: " + chatId[0].toUpperCase() + chatId.substring(1, chatId.length)
+          : "Rooms",
       headerRight: () => (
         <Pressable onPress={handleEditChatId}>
           {({ pressed }) => (
@@ -54,7 +58,7 @@ export default function MessagesScreen() {
         </Pressable>
       ),
     });
-  }, [navigation, handleEditChatId]);
+  }, [navigation, handleEditChatId, chatId]);
 
   const handleSaveChatId = async () => {
     if (tempChatId.trim()) {
@@ -136,12 +140,6 @@ export default function MessagesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {chatId.length > 0 &&
-            chatId[0].toUpperCase() + chatId.substring(1, chatId.length)}
-        </Text>
-      </View>
       <ChatWindow
         username={username}
         emptyStateMessage="No messages in this chat"
@@ -223,18 +221,6 @@ export default function MessagesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    paddingTop: 10,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
   },
   modalOverlay: {
     flex: 1,
