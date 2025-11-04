@@ -1,3 +1,4 @@
+
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useCallback, useEffect, useRef, useState } from "react";
 import
@@ -25,9 +26,6 @@ import { addMessage, getMessages } from "@/database/services";
 import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
 import { usePeerStatus } from "./usePeerStatus";
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 // Video component wrapper
 function VideoMessage({ source, style }: { source: any; style: any }) {
@@ -99,9 +97,6 @@ export default function ChatWindow({
       return;
     }
     await actions.startService();
-    await sleep(100) // TODO: Fix this dirty hack? It will error if we don't wait for it to start
-    await actions.startDiscovery(); // TODO: shouldn't need to call this from UI
-  };
 
   // Load messages from database on mount and listen for new messages
   useEffect(() => {
@@ -212,7 +207,7 @@ export default function ChatWindow({
             );
           } else {
             return (
-              <Image 
+              <Image
                 key={index}
                 source={item.source}
                 style={styles.messageImage}
