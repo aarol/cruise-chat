@@ -1,31 +1,27 @@
-
-import { VideoView, useVideoPlayer } from 'expo-video';
+import { VideoView, useVideoPlayer } from "expo-video";
 import { useCallback, useEffect, useRef, useState } from "react";
-import
-  {
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    View,
-  } from "react-native";
-import
-  {
-    Button,
-    IconButton,
-    Snackbar,
-    Surface,
-    Text,
-    TextInput,
-    useTheme
-  } from "react-native-paper";
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
+import {
+  Button,
+  IconButton,
+  Snackbar,
+  Surface,
+  Text,
+  TextInput,
+  useTheme,
+} from "react-native-paper";
 
 import { Message } from "@/database/schema";
 import { addMessage, getMessages } from "@/database/services";
 import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
 import { usePeerStatus } from "./usePeerStatus";
-
 
 // Video component wrapper
 function VideoMessage({ source, style }: { source: any; style: any }) {
@@ -69,20 +65,14 @@ export default function ChatWindow({
   // Define media types for special chat keywords
   interface MediaItem {
     source: any;
-    type: 'image' | 'video';
+    type: "image" | "video";
   }
 
   // This maps a keyword from the user into an asset. Add here to send new gifs
   const specialChats: Record<string, MediaItem[]> = {
-    "ship1": [
-      { source: require('@/assets/chats/ship1.mp4'), type: 'video' }
-    ],
-    "ship2": [
-      { source: require('@/assets/chats/ship2.mp4'), type: 'video' }
-    ],
-    "icon": [
-      { source: require('@/assets/images/icon.png'), type: 'image' }
-    ]
+    ship1: [{ source: require("@/assets/chats/ship1.mp4"), type: "video" }],
+    ship2: [{ source: require("@/assets/chats/ship2.mp4"), type: "video" }],
+    icon: [{ source: require("@/assets/images/icon.png"), type: "image" }],
   };
 
   const showSnackbar = (message: string) => {
@@ -97,7 +87,7 @@ export default function ChatWindow({
       return;
     }
     await actions.startService();
-
+  };
   // Load messages from database on mount and listen for new messages
   useEffect(() => {
     const loadMessages = async () => {
@@ -194,38 +184,40 @@ export default function ChatWindow({
 
     // Display media if one of the keywords
     if (mediaItems && mediaItems.length > 0) {
-      return <>
-        <Text style={styles.username}>{message.userId}:</Text>
-        {mediaItems.map((item, index) => {
-          if (item.type === 'video') {
-            return (
-              <VideoMessage
-                key={index}
-                source={item.source}
-                style={styles.messageImage}
-              />
-            );
-          } else {
-            return (
-              <Image
-                key={index}
-                source={item.source}
-                style={styles.messageImage}
-                resizeMode="contain"
-              />
-            );
-          }
-        })}
-      </>
+      return (
+        <>
+          <Text style={styles.username}>{message.userId}:</Text>
+          {mediaItems.map((item, index) => {
+            if (item.type === "video") {
+              return (
+                <VideoMessage
+                  key={index}
+                  source={item.source}
+                  style={styles.messageImage}
+                />
+              );
+            } else {
+              return (
+                <Image
+                  key={index}
+                  source={item.source}
+                  style={styles.messageImage}
+                  resizeMode="contain"
+                />
+              );
+            }
+          })}
+        </>
+      );
     } else {
-      return <Text style={styles.messageContainer}>
-        <Text style={styles.username}>{message.userId}: </Text>
-        <Text style={styles.messageBody}>
-          {message.content}
+      return (
+        <Text style={styles.messageContainer}>
+          <Text style={styles.username}>{message.userId}: </Text>
+          <Text style={styles.messageBody}>{message.content}</Text>
         </Text>
-      </Text>
+      );
     }
-  }
+  };
 
   return (
     <>
