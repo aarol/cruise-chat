@@ -466,6 +466,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         try {
             val messages = jsonMessage.getJSONArray("messages")
             var storedCount = 0
+            val mostRecentByChatId = mutableMapOf<String, Message>()
             
             for (i in 0 until messages.length()) {
                 val messageObj = messages.getJSONObject(i)
@@ -476,8 +477,23 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 val chatId = messageObj.optString("chat_id", "")
                 
                 val message = Message(messageId, content, userId, createdAt, chatId)
+                
+                // Check if this message is more recent (for notifications)
+                val localMostRecentTimestamp = 
+                    if (mostRecentByChatId[chatId] == null) getMostRecentLocalMessageTimestamp(chatId) 
+                    else mostRecentByChatId[chatId]!!.createdAt
+                val isMoreRecent = message.createdAt > localMostRecentTimestamp
+                
                 if (storeMessage(message)) {
                     storedCount++
+                    
+                    if (isMoreRecent) {
+                        Log.d(TAG, "Found more recent chat: $chatId")
+                        val currentMostRecent = mostRecentByChatId[chatId]
+                        if (currentMostRecent == null || message.createdAt > currentMostRecent.createdAt) {
+                            mostRecentByChatId[chatId] = message
+                        }
+                    }
                 }
             }
             
@@ -486,10 +502,35 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 notifyNewMessages(storedCount)
             }
             
+            // Check for notifications for each subscribed chat
+            for ((chatId, mostRecentMessage) in mostRecentByChatId) {
+                Log.d(TAG, "More recent message in chat: $chatId")
+                if (isSubscribedToNotifications(chatId)) {
+                    showMessageNotification(mostRecentMessage)
+                    Log.d(TAG, "🔔 Raised notification for synced message in chat: $chatId")
+                }
+            }
+            
             Log.d(TAG, "Received message batch from $endpointId: stored $storedCount/${messages.length()} messages")
         } catch (e: Exception) {
             Log.e(TAG, "Error handling message batch from $endpointId: ${e.message}")
         }
+    }
+    
+    private fun getMostRecentLocalMessageTimestamp(chatId: String): Long {
+        try {
+            val query = "SELECT created_at FROM messages WHERE chat_id = ? ORDER BY created_at DESC LIMIT 1"
+            val cursor = database?.rawQuery(query, arrayOf(chatId))
+            
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    return it.getLong(it.getColumnIndexOrThrow("created_at"))
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting most recent message timestamp for chat $chatId: ${e.message}")
+        }
+        return 0L // Return 0 if no messages found or error occurred
     }
     
     private fun handleChatMessage(endpointId: String, jsonMessage: JSONObject, messageData: String) {
