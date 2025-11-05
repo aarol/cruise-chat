@@ -85,6 +85,12 @@ export default function ChatWindow({
     ],
     "icon": [
       { source: require('@/assets/images/icon.png'), type: 'image' }
+    ],
+    "trig1": [
+      { source: require('@/assets/chats/kolmio.webm'), type: 'video' }
+    ],
+    "trig2": [
+      { source: require('@/assets/chats/kolmio_raikka.webm'), type: 'video' }
     ]
   };
 
