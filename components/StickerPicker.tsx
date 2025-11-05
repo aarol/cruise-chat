@@ -2,6 +2,15 @@ import React, { useMemo, useState } from 'react';
 import { Image, SectionList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, IconButton, Modal, Portal, Searchbar, Surface, Text, useTheme } from 'react-native-paper';
 import assetManifest from './stickerManifest';
+import { VideoView, useVideoPlayer } from 'expo-video';
+
+function VideoPreview({ source, style }: { source: any; style?: any }) {
+  const player = useVideoPlayer(source, (p) => {
+    p.loop = true;
+    p.play();
+  });
+  return <VideoView player={player} style={style} contentFit="contain" nativeControls={true} />;
+}
 
 type Props = {
   visible: boolean;
@@ -15,13 +24,14 @@ const StickerPicker = ({ visible, onDismiss, onSelect }: Props) => {
   const [previewId, setPreviewId] = useState<string | null>(null);
 
   const stickersByPack = useMemo(() => {
-    const entries = Object.entries(assetManifest).filter(([, v]) => v.type === 'sticker');
-  const grouped: Record<string, Array<{ id: string; label?: string; source: any; thumb?: any }>> = {};
+    // include both static stickers and video stickers
+    const entries = Object.entries(assetManifest).filter(([, v]) => v.type === 'sticker' || v.type === 'video');
+  const grouped: Record<string, Array<{ id: string; label?: string; source: any; thumb?: any; isVideo?: boolean }>> = {};
     entries.forEach(([id, item]) => {
       const pack = item.pack ?? id.split('/')[0] ?? 'default';
       const label = item.label ?? id.split('/').slice(1).join('/');
       if (!grouped[pack]) grouped[pack] = [];
-      grouped[pack].push({ id, label, source: item.source, thumb: (item as any).thumb });
+      grouped[pack].push({ id, label, source: item.source, thumb: (item as any).thumb, isVideo: (item as any).type === 'video' });
     });
 
     // Apply search filter working on pack names first (case-insensitive).
@@ -104,10 +114,14 @@ const StickerPicker = ({ visible, onDismiss, onSelect }: Props) => {
 
         {/* Preview overlay */}
         <Portal>
-          <Modal visible={!!previewId} onDismiss={() => setPreviewId(null)} contentContainerStyle={[styles.previewModal, { backgroundColor: theme.colors.surface }]}> 
+            <Modal visible={!!previewId} onDismiss={() => setPreviewId(null)} contentContainerStyle={[styles.previewModal, { backgroundColor: theme.colors.surface }]}> 
             {previewId && (
               <View style={styles.previewContent}>
-                <Image source={assetManifest[previewId].source} style={styles.previewImage} />
+                {assetManifest[previewId].type === 'video' ? (
+                  <VideoPreview source={assetManifest[previewId].source} style={styles.previewImage} />
+                ) : (
+                  <Image source={assetManifest[previewId].source} style={styles.previewImage} />
+                )}
                 <View style={styles.previewButtons}>
                   <Button mode="contained" onPress={() => { onSelect(previewId); setPreviewId(null); onDismiss(); }}>Send</Button>
                   <Button mode="text" onPress={() => setPreviewId(null)}>Close</Button>
