@@ -14,7 +14,7 @@ export default function MessagesScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { usernameState } = useUsername();
-  const [chatId, setChatId] = useState("default");
+  const [chatId, setChatId] = useState("");
   const [showEditModal, setShowEditModal] = useState(true);
   const [tempChatId, setTempChatId] = useState("");
   const [templateRooms, setTemplateRooms] = useState<string[]>([]);
@@ -25,7 +25,7 @@ export default function MessagesScreen() {
         await MeshPeerModule.getNotificationSubscriptions();
       // Filter out the current chatId and empty string (General chat)
       const filteredSubscriptions = subscriptions.filter(
-        (sub) => sub !== chatId && sub !== "",
+        (sub) => true,
       );
       setTemplateRooms(filteredSubscriptions);
     } catch (error) {
@@ -68,6 +68,7 @@ export default function MessagesScreen() {
       // Unsubscribe from old chat and subscribe to new one
       try {
         await MeshPeerModule.subscribeToNotifications(newChatId);
+        console.log(`2 Subscribed to notifications for '${newChatId}'`);
       } catch (error) {
         console.error("Failed to update notification subscriptions:", error);
       }
@@ -81,6 +82,7 @@ export default function MessagesScreen() {
     // Unsubscribe from old chat and subscribe to new one
     try {
       await MeshPeerModule.subscribeToNotifications(roomName);
+      console.log(`1 Subscribed to notifications for '${roomName}'`);
     } catch (error) {
       console.error("Failed to update notification subscriptions:", error);
     }
@@ -116,18 +118,6 @@ export default function MessagesScreen() {
       loadSubscriptions();
     }
   }, [showEditModal, chatId]);
-  useEffect(() => {
-    const subscribeToInitialChat = async () => {
-      try {
-        await MeshPeerModule.subscribeToNotifications(chatId);
-        console.log(`Subscribed to notifications for '${chatId}'`);
-      } catch (error) {
-        console.error("Failed to subscribe to initial chat:", error);
-      }
-    };
-
-    subscribeToInitialChat();
-  }, []);
 
   return (
     <View style={styles.container}>

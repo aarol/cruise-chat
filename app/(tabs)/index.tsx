@@ -1,10 +1,9 @@
-import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
 import { StyleSheet } from "react-native";
 import { Snackbar, Surface, useTheme } from "react-native-paper";
 
 import ChatWindow from "@/components/ChatWindow";
 import { useUsername } from "@/components/useUsername";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
 export default function TabOneScreen() {
@@ -23,17 +22,6 @@ export default function TabOneScreen() {
       router.push("/Welcome");
     }
 
-    // Subscribe to notifications for General chat (empty string chatId)
-    const subscribeToGeneralChat = async () => {
-      try {
-        await MeshPeerModule.subscribeToNotifications("");
-        console.log("Subscribed to notifications for General chat");
-      } catch (error) {
-        console.error("Failed to subscribe to General chat:", error);
-      }
-    };
-
-    subscribeToGeneralChat();
   }, [usernameState.isInitialized, usernameState.username, router]);
 
   const showSnackbar = (
