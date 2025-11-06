@@ -282,6 +282,10 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
 
     AsyncFunction("setUsername") { username: String, promise: Promise ->
       try {
+        if (username.length >= 20) {
+          promise.reject("SET_USERNAME_ERROR", "Failed to set username: username is too long (max 20 characters)", null)
+          return@AsyncFunction
+        }
         val context = appContext.reactContext ?: run {
           promise.reject("NO_CONTEXT", "App context is not available", null)
           return@AsyncFunction
