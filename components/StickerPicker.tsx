@@ -1,8 +1,8 @@
+import { VideoView, useVideoPlayer } from 'expo-video';
 import React, { useMemo, useState } from 'react';
 import { Image, SectionList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, IconButton, Modal, Portal, Searchbar, Surface, Text, useTheme } from 'react-native-paper';
 import assetManifest from './stickerManifest';
-import { VideoView, useVideoPlayer } from 'expo-video';
 
 function VideoPreview({ source, style }: { source: any; style?: any }) {
   const player = useVideoPlayer(source, (p) => {
