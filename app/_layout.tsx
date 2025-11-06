@@ -1,4 +1,3 @@
-import { ConnectedPeersStatus } from "@/components/ConnectedPeersStatus";
 import PeerStatusProvider from "@/components/usePeerStatus";
 import UsernameProvider from "@/components/useUsername";
 import { paperTheme } from "@/constants/themes/paperTheme";
@@ -11,8 +10,9 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
 import { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { AppState, StyleSheet } from "react-native";
 import "react-native-get-random-values";
 import { PaperProvider, adaptNavigationTheme } from "react-native-paper";
 import "react-native-reanimated";
@@ -54,6 +54,17 @@ export default function RootLayout() {
     db,
     migrations,
   );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      console.debug("Visibilty: ", nextState);
+      const isForeground = nextState === "active";
+      MeshPeerModule.setVisibility(isForeground);
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {

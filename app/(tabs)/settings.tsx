@@ -1,7 +1,6 @@
 import { usePeerStatus } from "@/components/usePeerStatus";
 import { useUsername } from "@/components/useUsername";
 import { getMessageCount } from "@/database/services";
-import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";

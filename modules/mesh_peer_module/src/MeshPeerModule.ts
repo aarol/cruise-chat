@@ -43,6 +43,9 @@ declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   getNotificationSubscriptions(): Promise<string[]>;
   isSubscribedToNotifications(chatId: string): Promise<boolean>;
   clearNotificationSubscriptions(): Promise<void>;
+  
+  // Visiblity (is the app in the foreground or not?)
+  setVisibility(foreground: Boolean): Promise<void>;
 }
 
 // Try to load the native module. In development (managed Expo) the native

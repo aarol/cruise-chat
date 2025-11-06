@@ -47,6 +47,9 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
         fun onNewMessages(count: Int, totalMessages: Int)
         fun onMessageReceived(endpointId: String, message: String)
+
+        // Not an event, but need to get this from MeshPeerModule
+        fun isForeground(): Boolean
     }
     
     private var listener: NearbyServiceListener? = null
@@ -522,7 +525,8 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             // Check for notifications for each subscribed chat
             for ((chatId, mostRecentMessage) in mostRecentByChatId) {
                 Log.d(TAG, "More recent message in chat: $chatId")
-                if (isSubscribedToNotifications(chatId)) {
+                val foregrounded = listener?.isForeground() ?:false
+                if (!foregrounded && isSubscribedToNotifications(chatId)) {
                     showMessageNotification(mostRecentMessage)
                     Log.d(TAG, "🔔 Raised notification for synced message in chat: $chatId")
                 }
@@ -609,9 +613,11 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 listener?.onMessageReceived(endpointId, message.content)
                 notifyNewMessages(1)
                 Log.d(TAG, "🔔 Notified listener about new message | ID: ${message.id}")
-                
+
+                val foregrounded = listener?.isForeground() ?:false
+
                 // Raise notification if this chat is subscribed
-                if (isSubscribedToNotifications(message.chatId)) {
+                if (!foregrounded &&  isSubscribedToNotifications(message.chatId)) {
                     showMessageNotification(message)
                     Log.d(TAG, "🔔 Raised notification for chat: ${message.chatId}")
                 }
