@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "./index";
 import { type Message, messages, type NewMessage } from "./schema";
@@ -46,14 +46,15 @@ export const getMessages = async (
   maxMessageCount?: number,
 ): Promise<Message[]> => {
   try {
-    const limit = maxMessageCount ?? 999
-    return await db
+    const limit = maxMessageCount ?? 999;
+    const rows = await db
       .select()
       .from(messages)
       .where(eq(messages.chatId, chatId))
-      .orderBy(messages.createdAt)
-      .limit(limit)
+      .orderBy(desc(messages.createdAt))
+      .limit(limit);
 
+    return rows.reverse();
   } catch (error) {
     console.error("Error fetching messages:", error);
     throw new Error(`Failed to get messages: ${error}`);
