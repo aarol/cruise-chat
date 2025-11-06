@@ -13,7 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "sticker:generate": "node ./scripts/generate-sticker-manifest.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
