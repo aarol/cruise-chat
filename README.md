@@ -20,3 +20,9 @@ CruiseChat aims to be a simple messaging app that works with peer-to-peer connec
 ## Developing the native module
 
 [Instructions](https://docs.expo.dev/modules/get-started/#edit-the-module)
+
+## Problems
+
+- Username size is not limited
+- Message size is maybe not limited?
+- The number of synced messages is limited to ~30k bytes
