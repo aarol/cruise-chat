@@ -469,6 +469,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             val messages = jsonMessage.getJSONArray("messages")
             var storedCount = 0
             val mostRecentByChatId = mutableMapOf<String, Message>()
+            val newMessagesToForward = mutableListOf<JSONObject>()
             
             for (i in 0 until messages.length()) {
                 val messageObj = messages.getJSONObject(i)
@@ -489,6 +490,15 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 if (storeMessage(message)) {
                     storedCount++
                     
+                    val chatMessage = JSONObject().apply {
+                        put("id", messageId)
+                        put("content", content)
+                        put("chat_id", chatId)
+                        put("user_id", userId)
+                        put("created_at", createdAt)
+                    }
+                    newMessagesToForward.add(chatMessage)
+                    
                     if (isMoreRecent) {
                         Log.d(TAG, "Found more recent chat: $chatId")
                         val currentMostRecent = mostRecentByChatId[chatId]
@@ -504,6 +514,11 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 notifyNewMessages(storedCount)
             }
             
+            // Broadcast new messages to other peers (excluding the sender)
+            if (newMessagesToForward.isNotEmpty()) {
+                broadcastNewMessagesToOthers(newMessagesToForward, endpointId)
+            }
+            
             // Check for notifications for each subscribed chat
             for ((chatId, mostRecentMessage) in mostRecentByChatId) {
                 Log.d(TAG, "More recent message in chat: $chatId")
@@ -516,6 +531,37 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             Log.d(TAG, "Received message batch from $endpointId: stored $storedCount/${messages.length()} messages")
         } catch (e: Exception) {
             Log.e(TAG, "Error handling message batch from $endpointId: ${e.message}")
+        }
+    }
+    
+    private fun broadcastNewMessagesToOthers(messages: List<JSONObject>, excludeEndpointId: String) {
+        try {
+            val connectedPeers = connectionHandler.getConnectedPeers()
+            val peersToSendTo = connectedPeers.filter { it != excludeEndpointId }
+            
+            if (peersToSendTo.isEmpty()) {
+                Log.d(TAG, "No other peers to forward ${messages.size} messages to")
+                return
+            }
+            
+            if (messages.isEmpty()) {
+                return
+            }
+            
+            Log.d(TAG, "Broadcasting ${messages.size} new messages to ${peersToSendTo.size} peers (excluding $excludeEndpointId)")
+            
+            // Create a message batch
+            val messageBatch = JSONObject().apply {
+                put("type", MSG_TYPE_MESSAGE_BATCH)
+                put("messages", JSONArray(messages))
+            }
+            
+            val payload = Payload.fromBytes(messageBatch.toString().toByteArray(StandardCharsets.UTF_8))
+            connectionHandler.sendPayloads(payload)
+            
+            Log.d(TAG, "Forwarded ${messages.size} messages to other peers as batch")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error broadcasting new messages to others: ${e.message}")
         }
     }
     
