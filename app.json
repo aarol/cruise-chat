@@ -23,7 +23,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.cruisechat"
+      "package": "com.raskitech.cruisechat"
     },
     "web": {
       "bundler": "metro",

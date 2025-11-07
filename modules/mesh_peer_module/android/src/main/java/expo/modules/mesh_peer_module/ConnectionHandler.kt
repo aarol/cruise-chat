@@ -7,7 +7,7 @@ import com.google.android.gms.nearby.connection.*
 class ConnectionHandler(service: NearbyService) {
 
     private val TAG = "NearbyService"
-    private val SERVICE_ID = "com.anonymous.cruisechat"
+    private val SERVICE_ID = "com.raskitech.cruisechat"
 
     private val currName = generateRandomString()
 
