@@ -63,39 +63,7 @@ export default function ChatWindow({
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const { peerStatus, actions } = usePeerStatus();
-  const { isServiceRunning, isDiscovering } = peerStatus;
-
-  // Define media types for special chat keywords
-  interface MediaItem {
-    source: any;
-    type: "image" | "video";
-  }
-  // Legacy: this maps a keyword from plain text messages into assets.
-  // We'll try parsing JSON content first (new approach). Keep this for
-  // backward compatibility with older plain text shortcuts.
-  const specialChats: Record<string, MediaItem[]> = {
-    ship1: [{ source: require("@/assets/chats/ship1.mp4"), type: "video" }],
-    ship2: [{ source: require("@/assets/chats/ship2.mp4"), type: "video" }],
-    icon: [{ source: require("@/assets/images/icon.png"), type: "image" }],
-    trig1: [{ source: require("@/assets/chats/kolmio.webm"), type: "video" }],
-    trig2: [
-      { source: require("@/assets/chats/kolmio_raikka.webm"), type: "video" },
-    ],
-  };
-
-  // Try to parse a message.content value as JSON; if it is structured
-  // (for example: { kind: 'sticker', id: 'sticker_ship1', asset: '...' })
-  // return the parsed object; otherwise return null.
-  const tryParseContent = (content: string) => {
-    if (!content) return null;
-    try {
-      const parsed = JSON.parse(content);
-      if (parsed && typeof parsed === "object") return parsed;
-      return null;
-    } catch (e) {
-      return null;
-    }
-  };
+  const { isServiceRunning } = peerStatus;
 
   const showSnackbar = (message: string) => {
     setSnackbarMessage(message);
@@ -231,84 +199,6 @@ export default function ChatWindow({
     },
     [username, chatId],
   );
-
-  const GetMessageContent = (message: Message) => {
-    // First, try structured JSON payloads stored in content (new approach).
-    const parsed = tryParseContent(message.content);
-    if (parsed && parsed.kind) {
-      const kind = parsed.kind as string;
-      const id = parsed.id ?? parsed.stickerId ?? parsed.asset ?? null;
-
-      // Resolve asset from manifest if present
-      const manifestItem = id ? assetManifest[id] : null;
-
-      if (manifestItem) {
-        return (
-          <>
-            <Text style={styles.username}>{message.userId}:</Text>
-            {(manifestItem as any).type === "video" ? (
-              <VideoMessage
-                source={manifestItem.source}
-                style={styles.messageImage}
-              />
-            ) : (
-              <Image
-                source={manifestItem.source}
-                style={styles.messageImage}
-                resizeMode="contain"
-              />
-            )}
-          </>
-        );
-      }
-      // Unknown structured payload: show a small placeholder text
-      return (
-        <Text style={styles.messageContainer}>
-          <Text style={styles.username}>{message.userId}: </Text>
-          <Text style={styles.messageBody}>[unsupported message]</Text>
-        </Text>
-      );
-    }
-
-    // Fallback: legacy behavior (plain text keywords -> specialChats)
-    const messageLower = message.content.toLowerCase();
-    const mediaItems = specialChats[messageLower];
-
-    if (mediaItems && mediaItems.length > 0) {
-      return (
-        <>
-          <Text style={styles.username}>{message.userId}:</Text>
-          {mediaItems.map((item, index) => {
-            if (item.type === "video") {
-              return (
-                <VideoMessage
-                  key={index}
-                  source={item.source}
-                  style={styles.messageImage}
-                />
-              );
-            } else {
-              return (
-                <Image
-                  key={index}
-                  source={item.source}
-                  style={styles.messageImage}
-                  resizeMode="contain"
-                />
-              );
-            }
-          })}
-        </>
-      );
-    } else {
-      return (
-        <Text style={styles.messageContainer}>
-          <Text style={styles.username}>{message.userId}: </Text>
-          <Text style={styles.messageBody}>{message.content}</Text>
-        </Text>
-      );
-    }
-  };
 
   return (
     <>
@@ -454,6 +344,117 @@ export default function ChatWindow({
     </>
   );
 }
+
+// Define media types for special chat keywords
+interface MediaItem {
+  source: any;
+  type: "image" | "video";
+}
+
+// Legacy: this maps a keyword from plain text messages into assets.
+// We'll try parsing JSON content first (new approach). Keep this for
+// backward compatibility with older plain text shortcuts.
+const specialChats: Record<string, MediaItem[]> = {
+  ship1: [{ source: require("@/assets/chats/ship1.mp4"), type: "video" }],
+  ship2: [{ source: require("@/assets/chats/ship2.mp4"), type: "video" }],
+  icon: [{ source: require("@/assets/images/icon.png"), type: "image" }],
+  trig1: [{ source: require("@/assets/chats/kolmio.webm"), type: "video" }],
+  trig2: [
+    { source: require("@/assets/chats/kolmio_raikka.webm"), type: "video" },
+  ],
+};
+
+// Try to parse a message.content value as JSON; if it is structured
+// (for example: { kind: 'sticker', id: 'sticker_ship1', asset: '...' })
+// return the parsed object; otherwise return null.
+const tryParseContent = (content: string) => {
+  if (!content) return null;
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed === "object") return parsed;
+    return null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const GetMessageContent = (message: Message) => {
+  // First, try structured JSON payloads stored in content (new approach).
+  const parsed = tryParseContent(message.content);
+  if (parsed && parsed.kind) {
+    const kind = parsed.kind as string;
+    const id = parsed.id ?? parsed.stickerId ?? parsed.asset ?? null;
+
+    // Resolve asset from manifest if present
+    const manifestItem = id ? assetManifest[id] : null;
+
+    if (manifestItem) {
+      return (
+        <>
+          <Text style={styles.username}>{message.userId}:</Text>
+          {(manifestItem as any).type === "video" ? (
+            <VideoMessage
+              source={manifestItem.source}
+              style={styles.messageImage}
+            />
+          ) : (
+            <Image
+              source={manifestItem.source}
+              style={styles.messageImage}
+              resizeMode="contain"
+            />
+          )}
+        </>
+      );
+    }
+    // Unknown structured payload: show a small placeholder text
+    return (
+      <Text style={styles.messageContainer}>
+        <Text style={styles.username}>{message.userId}: </Text>
+        <Text style={styles.messageBody}>[unsupported message]</Text>
+      </Text>
+    );
+  }
+
+  // Fallback: legacy behavior (plain text keywords -> specialChats)
+  const messageLower = message.content.toLowerCase();
+  const mediaItems = specialChats[messageLower];
+
+  if (mediaItems && mediaItems.length > 0) {
+    return (
+      <>
+        <Text style={styles.username}>{message.userId}:</Text>
+        {mediaItems.map((item, index) => {
+          if (item.type === "video") {
+            return (
+              <VideoMessage
+                key={index}
+                source={item.source}
+                style={styles.messageImage}
+              />
+            );
+          } else {
+            return (
+              <Image
+                key={index}
+                source={item.source}
+                style={styles.messageImage}
+                resizeMode="contain"
+              />
+            );
+          }
+        })}
+      </>
+    );
+  } else {
+    return (
+      <Text style={styles.messageContainer}>
+        <Text style={styles.username}>{message.userId}: </Text>
+        <Text style={styles.messageBody}>{message.content}</Text>
+      </Text>
+    );
+  }
+};
 
 const styles = StyleSheet.create({
   container: {
