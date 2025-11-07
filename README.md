@@ -11,10 +11,7 @@ CruiseChat aims to be a simple messaging app that works with peer-to-peer connec
 
 ## Todo
 
-- Add more gifs. Add the (not that large) files to assets/chats/ and then modify components/ChatWindow.tsx somewhere around line 85
-- Send notification on batch receive if they are more recent
-- Don't send notifications when open in the chatroom
-- Automatic service start
+- Add recents to stickers
 - Throttling users (limit messages sent per second)
 
 ## Developing the native module
@@ -25,3 +22,5 @@ CruiseChat aims to be a simple messaging app that works with peer-to-peer connec
 
 - The number of synced messages is limited to ~30k bytes
 - created_at time can be manipulated by changing phone system time
+- Spamming send button sends a lot of messages incorrectly
+- Chat doesn't always scroll to the bottom correctly

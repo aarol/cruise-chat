@@ -69,3 +69,13 @@ export const getMessageCount = async (): Promise<number> => {
     throw new Error(`Failed to count messages: ${error}`);
   }
 };
+
+export const deleteAllMessages = async (): Promise<void> => {
+  try {
+    await db.delete(messages);
+    console.log("All messages deleted successfully");
+  } catch (error) {
+    console.error("Error deleting messages:", error);
+    throw new Error(`Failed to delete messages: ${error}`);
+  }
+};

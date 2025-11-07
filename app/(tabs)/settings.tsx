@@ -1,6 +1,6 @@
 import { usePeerStatus } from "@/components/usePeerStatus";
 import { useUsername } from "@/components/useUsername";
-import { getMessageCount } from "@/database/services";
+import { deleteAllMessages, getMessageCount } from "@/database/services";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
@@ -66,6 +66,21 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error("Failed to save username:", error);
       showSnackbar(`Failed to save username: ${error}`, "error");
+    }
+  };
+
+  const handleDeleteMessages = async () => {
+    if (isServiceRunning) {
+      showSnackbar("Stop the service before deleting messages", "error");
+      return;
+    }
+    try {
+      await deleteAllMessages();
+      setMessageCount(0);
+      showSnackbar("All messages deleted successfully", "success");
+    } catch (error) {
+      console.error("Failed to delete messages:", error);
+      showSnackbar(`Failed to delete messages: ${error}`, "error");
     }
   };
 
@@ -249,6 +264,31 @@ export default function SettingsScreen() {
                   Messages stored
                 </Text>
               </Surface>
+
+              <Button
+                icon="delete-forever"
+                mode="outlined"
+                onPress={handleDeleteMessages}
+                disabled={isServiceRunning}
+                style={[styles.controlButton, styles.deleteButton]}
+                contentStyle={styles.controlButtonContent}
+                textColor={isServiceRunning ? theme.colors.onSurfaceDisabled : theme.colors.error}
+                buttonColor={isServiceRunning ? undefined : theme.colors.errorContainer}
+              >
+                Delete All Messages
+              </Button>
+              
+              {isServiceRunning && (
+                <Text
+                  variant="bodySmall"
+                  style={[
+                    styles.warningText,
+                    { color: theme.colors.onSurfaceVariant },
+                  ]}
+                >
+                  ⚠️ Stop the service first to delete messages
+                </Text>
+              )}
             </Card.Content>
           </Card>
         </ScrollView>
@@ -355,6 +395,18 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: "700",
     marginBottom: 4,
+  },
+  settingDescription: {
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  deleteButton: {
+    marginTop: 8,
+  },
+  warningText: {
+    marginTop: 12,
+    fontStyle: "italic",
+    textAlign: "center",
   },
   footer: {
     paddingVertical: 16,
