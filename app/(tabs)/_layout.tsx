@@ -1,20 +1,19 @@
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import
-  {
-    CommonActions,
-    ParamListBase,
-    TabNavigationState,
-  } from "@react-navigation/native";
+import {
+  CommonActions,
+  ParamListBase,
+  TabNavigationState,
+} from "@react-navigation/native";
 import { Tabs, withLayoutContext } from "expo-router";
 import React from "react";
-import
-  {
-    BottomNavigation,
-    MaterialBottomTabNavigationEventMap,
-    MaterialBottomTabNavigationOptions,
-    useTheme
-  } from "react-native-paper";
+import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
+import {
+  BottomNavigation,
+  MaterialBottomTabNavigationEventMap,
+  MaterialBottomTabNavigationOptions,
+  useTheme,
+} from "react-native-paper";
 
 const { Navigator } = createBottomTabNavigator();
 const MaterialBottomTabs = withLayoutContext<
@@ -42,6 +41,10 @@ export default function TabLayout() {
               target: route.key,
               canPreventDefault: true,
             });
+
+            if (route.name !== "rooms") {
+              MeshPeerModule.setActiveChat(null);
+            }
 
             if (event.defaultPrevented) {
               preventDefault();

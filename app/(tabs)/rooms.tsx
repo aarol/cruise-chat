@@ -9,6 +9,7 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { Pressable } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function MessagesScreen() {
   const router = useRouter();
@@ -21,12 +22,9 @@ export default function MessagesScreen() {
 
   const loadSubscriptions = async () => {
     try {
-      const subscriptions =
-        await MeshPeerModule.getNotificationSubscriptions();
+      const subscriptions = await MeshPeerModule.getNotificationSubscriptions();
       // Filter out the current chatId and empty string (General chat)
-      const filteredSubscriptions = subscriptions.filter(
-        (sub) => true,
-      );
+      const filteredSubscriptions = subscriptions.filter((sub) => true);
       setTemplateRooms(filteredSubscriptions);
     } catch (error) {
       console.error("Failed to load notification subscriptions:", error);
@@ -40,11 +38,19 @@ export default function MessagesScreen() {
     setShowEditModal(true);
   }, [chatId]);
 
+  useFocusEffect(
+    useCallback(() => {
+      MeshPeerModule.setActiveChat(chatId);
+    }, [chatId]),
+  );
+
   useLayoutEffect(() => {
     navigation.setOptions({
       title:
         chatId.length > 0
-          ? "Room: " + chatId[0].toUpperCase() + chatId.substring(1, chatId.length)
+          ? "Room: " +
+            chatId[0].toUpperCase() +
+            chatId.substring(1, chatId.length)
           : "Rooms",
       headerRight: () => (
         <Pressable onPress={handleEditChatId}>
@@ -103,6 +109,7 @@ export default function MessagesScreen() {
 
   useEffect(() => {
     setTempChatId(chatId);
+    MeshPeerModule.setActiveChat(chatId);
   }, [chatId]);
 
   useEffect(() => {
@@ -163,11 +170,7 @@ export default function MessagesScreen() {
                           handleDeleteTemplate(room);
                         }}
                       >
-                        <FontAwesome
-                          name="trash-o"
-                          size={16}
-                          color="#ff3b30"
-                        />
+                        <FontAwesome name="trash-o" size={16} color="#ff3b30" />
                       </TouchableOpacity>
                     </TouchableOpacity>
                   </View>

@@ -34,7 +34,7 @@ data class Message(
 class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
   private var nearbyService: NearbyService? = null
 
-  private var isForeground = true;
+  private var currentActiveChatId: String? = null
 
   private val TAG = "MeshPeerModule"
 
@@ -117,16 +117,16 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
     ))
   }
 
-  override fun isForeground(): Boolean {
-    return isForeground;
-  }
-
   override fun onStartedDiscovery() {
     sendEvent("onDiscoveryStarted")
   }
 
   override fun onStoppedDiscovery() {
     sendEvent("onDiscoveryStopped")
+  }
+
+  override fun activeChatId(): String? {
+    return currentActiveChatId;
   }
 
   override fun definition() = ModuleDefinition {
@@ -404,8 +404,9 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       }
     }
 
-    AsyncFunction("setVisibility") { foreground: Boolean, promise: Promise ->
-      isForeground = foreground
+    AsyncFunction("setActiveChat") { activeChatId: String?, promise: Promise ->
+      Log.d(TAG, "Active chat ID set to $activeChatId");
+      currentActiveChatId = activeChatId
     }
   }
 

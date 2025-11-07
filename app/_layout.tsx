@@ -12,9 +12,9 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
 import { useEffect } from "react";
-import { AppState, StyleSheet } from "react-native";
+import { AppState, StyleSheet, View } from "react-native";
 import "react-native-get-random-values";
-import { PaperProvider, adaptNavigationTheme } from "react-native-paper";
+import { PaperProvider, adaptNavigationTheme, Text } from "react-native-paper";
 import "react-native-reanimated";
 
 const { LightTheme } = adaptNavigationTheme<ReactNavigation.Theme>({
@@ -58,8 +58,9 @@ export default function RootLayout() {
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       console.debug("Visibilty: ", nextState);
-      const isForeground = nextState === "active";
-      MeshPeerModule.setVisibility(isForeground);
+      if (nextState !== "active") {
+        MeshPeerModule.setActiveChat(null);
+      }
     });
     return () => {
       subscription.remove();
