@@ -34,6 +34,8 @@ data class Message(
 class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
   private var nearbyService: NearbyService? = null
 
+  private var isForeground = true;
+
   private val TAG = "MeshPeerModule"
 
   companion object {
@@ -117,6 +119,10 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       "count" to count,
       "totalMessages" to totalMessages
     ))
+  }
+
+  override fun isForeground(): Boolean {
+    return isForeground;
   }
 
   override fun definition() = ModuleDefinition {
@@ -400,6 +406,10 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       } catch (e: Exception) {
         promise.reject("CLEAR_SUBSCRIPTIONS_ERROR", "Failed to clear notification subscriptions: ${e.message}", e)
       }
+    }
+
+    AsyncFunction("setVisibility") { foreground: Boolean, promise: Promise ->
+      isForeground = foreground
     }
 
     View(MeshPeerModuleView::class) {
