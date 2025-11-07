@@ -14,6 +14,7 @@ import {
   MaterialBottomTabNavigationOptions,
   useTheme,
 } from "react-native-paper";
+import { ConnectedPeersStatus } from "@/components/ConnectedPeersStatus";
 
 const { Navigator } = createBottomTabNavigator();
 const MaterialBottomTabs = withLayoutContext<
@@ -84,7 +85,7 @@ export default function TabLayout() {
             <MaterialIcons name="message" color={color} size={size} />
           ),
           headerRight(props) {
-            // return <ConnectedPeersStatus />; // Maybe we won't want to display here since this isn't the actual amount of people in the graph and rather a technical detail
+            return <ConnectedPeersStatus />; // Maybe we won't want to display here since this isn't the actual amount of people in the graph and rather a technical detail
           },
           tabBarLabel: "Chat",
         }}
