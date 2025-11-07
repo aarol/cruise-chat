@@ -4,16 +4,17 @@ import { deleteAllMessages, getMessageCount } from "@/database/services";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
-import {
-  Button,
-  Card,
-  Divider,
-  Snackbar,
-  Surface,
-  Text,
-  TextInput,
-  useTheme,
-} from "react-native-paper";
+import
+  {
+    Button,
+    Card,
+    Divider,
+    Snackbar,
+    Surface,
+    Text,
+    TextInput,
+    useTheme,
+  } from "react-native-paper";
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -265,7 +266,7 @@ export default function SettingsScreen() {
                 </Text>
               </Surface>
 
-              <Button
+              {/* <Button
                 icon="delete-forever"
                 mode="outlined"
                 onPress={handleDeleteMessages}
@@ -288,7 +289,7 @@ export default function SettingsScreen() {
                 >
                   ⚠️ Stop the service first to delete messages
                 </Text>
-              )}
+              )} */}
             </Card.Content>
           </Card>
         </ScrollView>
