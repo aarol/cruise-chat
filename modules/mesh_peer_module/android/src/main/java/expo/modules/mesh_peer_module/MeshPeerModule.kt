@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentSender
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Build
@@ -11,11 +12,16 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
+import com.google.android.gms.location.Priority
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.net.URL
-import androidx.core.content.edit
 
 data class Message(
     val id: String,
@@ -32,6 +38,7 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
 
   companion object {
     private const val REQUEST_CODE_PERMISSIONS = 1234
+    private const val REQUEST_CHECK_SETTINGS = 1235
   }
 
   private val requiredPermissions: List<String>
@@ -217,6 +224,39 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
     AsyncFunction("startNearbyService") { promise: Promise ->
       try {
         val context = appContext.reactContext!!
+        val activity = appContext.activityProvider?.currentActivity
+        
+        // Check and prompt for location settings
+        if (activity != null) {
+          val locationRequest = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY, 10000
+          ).build()
+          
+          val builder = LocationSettingsRequest.Builder()
+            .addLocationRequest(locationRequest)
+            .setAlwaysShow(true) // ensures the dialog is shown
+          
+          val client = LocationServices.getSettingsClient(activity)
+          val task = client.checkLocationSettings(builder.build())
+          
+          task.addOnSuccessListener {
+            // All location settings are satisfied
+            Log.d(TAG, "Location settings are satisfied")
+          }
+          
+          task.addOnFailureListener { exception ->
+            if (exception is ResolvableApiException) {
+              try {
+                // Show dialog asking the user to turn on location
+                exception.startResolutionForResult(activity, REQUEST_CHECK_SETTINGS)
+                Log.d(TAG, "Requesting user to enable location")
+              } catch (sendEx: IntentSender.SendIntentException) {
+                Log.e(TAG, "Error showing location settings dialog: ${sendEx.message}")
+              }
+            }
+          }
+        }
+        
         val intent = Intent(context, NearbyService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
           // startForegroundService() was introduced in O, just call startService for before O.
