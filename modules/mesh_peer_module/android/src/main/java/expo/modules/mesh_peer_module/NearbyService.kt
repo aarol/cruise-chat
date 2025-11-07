@@ -68,8 +68,8 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     private val notificationSubscriptions = mutableSetOf<String>()
 
     // Periodic discovery configuration
-    private var discoveryPeriodMs: Long = 30 * 1000L // 30 seconds
-    private var discoveryIntervalMs: Long = 3 * 60 * 1000L // 3 minutes
+    private var discoveryPeriodMs: Long = 3 * 60 * 1000L // 3 minutes
+    private var discoveryIntervalMs: Long = 2 * 1000L // 2 seconds break
     private val discoveryHandler = Handler(Looper.getMainLooper())
     private var discoveryRunnable: Runnable? = null
     private var isPeriodicDiscoveryEnabled = false
