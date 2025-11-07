@@ -6,10 +6,10 @@ import { useUsername } from "@/components/useUsername";
 import Colors from "@/constants/Colors";
 import MeshPeerModule from "@/modules/mesh_peer_module/src/MeshPeerModule";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { useFocusEffect } from "@react-navigation/native";
 import { useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { Pressable } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
 
 export default function MessagesScreen() {
   const router = useRouter();
@@ -162,7 +162,7 @@ export default function MessagesScreen() {
                       style={styles.templateButton}
                       onPress={() => handleSelectTemplate(room)}
                     >
-                      <Text style={styles.templateText}>{room}</Text>
+                      <Text style={styles.templateText}>{room === '' ? "General chat" : (room[0].toUpperCase() + room.substr(1).toLowerCase())}</Text>
                       <TouchableOpacity
                         style={styles.deleteButton}
                         onPress={(e) => {
