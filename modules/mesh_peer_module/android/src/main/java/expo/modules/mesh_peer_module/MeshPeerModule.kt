@@ -13,6 +13,10 @@ import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequest
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -22,6 +26,7 @@ import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.net.URL
+import java.util.concurrent.TimeUnit
 
 data class Message(
     val id: String,
@@ -133,7 +138,17 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
     Name("MeshPeerModule")
 
     OnCreate {
+      val workRequest = OneTimeWorkRequestBuilder<ReminderNotificationWorker>()
+        .setInitialDelay(20_000, TimeUnit.MILLISECONDS)
+        .build()
 
+      WorkManager.getInstance().enqueueUniqueWork(
+        "onboard-reminder",
+        ExistingWorkPolicy.KEEP,
+        workRequest
+      )
+
+      Log.d(TAG, "Scheduled the onboard reminder");
     }
 
     OnDestroy {
