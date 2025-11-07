@@ -26,7 +26,6 @@ interface PeerStatusActions {
   startService: () => Promise<void>;
   stopService: () => Promise<void>;
   startDiscovery: () => Promise<void>;
-  stopDiscovery: () => Promise<void>;
 }
 
 interface PeerStatusContextValue {
@@ -61,19 +60,16 @@ export const PeerStatusProvider: React.FC<PeerStatusProviderProps> = ({
   // Refresh peer status from native module
   const refreshPeerStatus = useCallback(async () => {
     try {
-      const [connectedPeers, isServiceRunning, isDiscovering] =
-        await Promise.all([
-          MeshPeerModule.getConnectedPeers(),
-          MeshPeerModule.isServiceRunning(),
-          MeshPeerModule.isDiscovering(),
-        ]);
+      const [connectedPeers, isServiceRunning] = await Promise.all([
+        MeshPeerModule.getConnectedPeers(),
+        MeshPeerModule.isServiceRunning(),
+      ]);
 
-      console.log({ connectedPeers, isServiceRunning, isDiscovering });
+      console.log({ connectedPeers, isServiceRunning });
 
       updatePeerStatus({
         connectedPeers,
         isServiceRunning,
-        isDiscovering,
       });
     } catch (error) {
       console.error("Error refreshing peer status:", error);
@@ -181,6 +177,46 @@ export const PeerStatusProvider: React.FC<PeerStatusProviderProps> = ({
           },
         );
 
+        const serviceStartedSub = MeshPeerModule.addListener(
+          "onServiceStarted",
+          () => {
+            setPeerStatus((prev) => ({
+              ...prev,
+              isServiceRunning: true,
+            }));
+          },
+        );
+        const serviceStoppedSub = MeshPeerModule.addListener(
+          "onServiceStopped",
+          () => {
+            console.log("service stopped event");
+            setPeerStatus((prev) => ({
+              ...prev,
+              isServiceRunning: false,
+            }));
+          },
+        );
+
+        const discoveryStartedSub = MeshPeerModule.addListener(
+          "onDiscoveryStarted",
+          () => {
+            setPeerStatus((prev) => ({
+              ...prev,
+              isDiscovering: true,
+            }));
+          },
+        );
+
+        const discoveryStoppedSub = MeshPeerModule.addListener(
+          "onDiscoveryStopped",
+          () => {
+            setPeerStatus((prev) => ({
+              ...prev,
+              isDiscovering: false,
+            }));
+          },
+        );
+
         subscriptions.push(
           peerDiscoveredSub,
           peerConnectedSub,
@@ -188,6 +224,10 @@ export const PeerStatusProvider: React.FC<PeerStatusProviderProps> = ({
           peerLostSub,
           debugSub,
           errorSub,
+          serviceStartedSub,
+          serviceStoppedSub,
+          discoveryStartedSub,
+          discoveryStoppedSub,
         );
 
         setListenersInitialized(true);
@@ -218,23 +258,20 @@ export const PeerStatusProvider: React.FC<PeerStatusProviderProps> = ({
     startService: useCallback(async () => {
       try {
         await MeshPeerModule.startNearbyService();
-        await refreshPeerStatus();
       } catch (error) {
         console.error("Error starting service:", error);
         throw error;
       }
-    }, [refreshPeerStatus]),
+    }, []),
 
     stopService: useCallback(async () => {
       try {
-        await MeshPeerModule.stopDiscovery();
         await MeshPeerModule.stopNearbyService();
-        await refreshPeerStatus();
       } catch (error) {
         console.error("Error stopping service:", error);
         throw error;
       }
-    }, [refreshPeerStatus]),
+    }, []),
 
     startDiscovery: useCallback(async () => {
       try {
@@ -242,16 +279,6 @@ export const PeerStatusProvider: React.FC<PeerStatusProviderProps> = ({
         await refreshPeerStatus();
       } catch (error) {
         console.error("Error starting discovery:", error);
-        throw error;
-      }
-    }, [refreshPeerStatus]),
-
-    stopDiscovery: useCallback(async () => {
-      try {
-        await MeshPeerModule.stopDiscovery();
-        await refreshPeerStatus();
-      } catch (error) {
-        console.error("Error stopping discovery:", error);
         throw error;
       }
     }, [refreshPeerStatus]),

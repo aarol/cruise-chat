@@ -27,7 +27,6 @@ export default function SettingsScreen() {
   const { peerStatus, actions } = usePeerStatus();
   const { usernameState, actions: usernameActions } = useUsername();
   const { isServiceRunning, connectedPeers } = peerStatus;
-  console.log({ isServiceRunning });
   useFocusEffect(
     useCallback(() => {
       loadMessageCount();

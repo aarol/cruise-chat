@@ -1,5 +1,3 @@
-import type { StyleProp, ViewStyle } from "react-native";
-
 export type OnLoadEventPayload = {
   url: string;
 };
@@ -47,10 +45,8 @@ export type MeshPeerModuleEvents = {
   onNewMessages: (params: NewMessagesPayload) => void;
   onDebug: (params: { message: string }) => void;
   onError: (params: { error: string }) => void;
-};
-
-export type MeshPeerModuleViewProps = {
-  url: string;
-  onLoad: (event: { nativeEvent: OnLoadEventPayload }) => void;
-  style?: StyleProp<ViewStyle>;
+  onServiceStarted: () => void;
+  onServiceStopped: () => void;
+  onDiscoveryStarted: () => void;
+  onDiscoveryStopped: () => void;
 };

@@ -76,10 +76,6 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       val binder = service as NearbyService.LocalBinder
       nearbyService = binder.getService()
       nearbyService?.setListener(this@MeshPeerModule)
-      val discoveryStarted = nearbyService?.startFindConnections() ?: false
-      if(discoveryStarted) {
-        Log.d(TAG, "Started automatic discovery in NearbyService")
-      }
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {
@@ -125,6 +121,14 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
     return isForeground;
   }
 
+  override fun onStartedDiscovery() {
+    sendEvent("onDiscoveryStarted")
+  }
+
+  override fun onStoppedDiscovery() {
+    sendEvent("onDiscoveryStopped")
+  }
+
   override fun definition() = ModuleDefinition {
     Name("MeshPeerModule")
 
@@ -144,7 +148,11 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       "onMessageReceived",
       "onConnectionFailed",
       "onNewMessages",
-      "onDebug"
+      "onDebug",
+      "onServiceStarted",
+      "onServiceStopped",
+      "onDiscoveryStarted",
+      "onDiscoveryStopped",
     )
 
     AsyncFunction("checkPermissions") { promise: Promise ->
@@ -179,27 +187,21 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
 
     AsyncFunction("startDiscovery") { promise: Promise ->
       Log.d(TAG, "startDiscovery called")
-      
+
       if (!hasRequiredPermissions()) {
         Log.w(TAG, "startDiscovery failed: permissions not granted")
         promise.reject("PERMISSION_DENIED", "Required permissions not granted", null)
         return@AsyncFunction
       }
-
-      Log.d(TAG, "Nearbyservice: $nearbyService");
-      val success: Boolean = nearbyService?.startFindConnections() ?: false
-      if (success) {
-        Log.d(TAG, "startDiscovery succeeded")
+      try {
+        Log.d(TAG, "Nearbyservice: $nearbyService");
+        nearbyService?.startDiscoveryImmediate()
+        Log.d(TAG, "startDiscoveryImmediate succeeded")
         promise.resolve(null)
-      } else {
-        Log.e(TAG, "startDiscovery failed")
-        promise.reject("DISCOVERY_FAILED", "Failed to start discovery", null)
+      } catch(e: Exception) {
+        Log.e(TAG, "startDiscoveryImmediate failed: ${e.message}")
+        promise.reject("DISCOVERY_FAILED", "Failed to start discovery", e)
       }
-    }
-
-    AsyncFunction("stopDiscovery") { promise: Promise ->
-      nearbyService?.stopFindConnections()
-      promise.resolve(null)
     }
 
     AsyncFunction("sendMessage") {id: String, content: String, userId: String, createdAt: Long, chatId: String, promise: Promise ->
@@ -276,6 +278,7 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
           return@AsyncFunction
         }
         Log.d(TAG, "Service started successfully")
+        sendEvent("onServiceStarted")
         promise.resolve("Service started successfully")
       } catch (e: Exception) {
         promise.reject("SERVICE_START_FAILED", "Failed to start Nearby service: ${e.message}", e)
@@ -288,6 +291,8 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
         val context = appContext.reactContext!!
         val intent = Intent(context, NearbyService::class.java)
         context.stopService(intent)
+
+        sendEvent("onServiceStopped")
         promise.resolve("Service stopped successfully")
       } catch (e: Exception) {
         promise.reject("SERVICE_STOP_FAILED", "Failed to stop Nearby service: ${e.message}", e)
@@ -354,15 +359,6 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
       }
     }
 
-    AsyncFunction("isDiscovering") { promise: Promise ->
-      try {
-        val discovering = nearbyService?.isDiscovering() ?: false
-        promise.resolve(discovering)
-      } catch (e: Exception) {
-        promise.reject("STATE_ERROR", "Failed to get discovery state: ${e.message}", e)
-      }
-    }
-
     AsyncFunction("subscribeToNotifications") { chatId: String, promise: Promise ->
       try {
         val success = nearbyService?.subscribeToNotifications(chatId) ?: false
@@ -410,13 +406,6 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
 
     AsyncFunction("setVisibility") { foreground: Boolean, promise: Promise ->
       isForeground = foreground
-    }
-
-    View(MeshPeerModuleView::class) {
-      Prop("url") { view: MeshPeerModuleView, url: URL ->
-        view.webView.loadUrl(url.toString())
-      }
-      Events("onLoad")
     }
   }
 

@@ -11,7 +11,6 @@ declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
 
   // New Nearby Connections functions
   startDiscovery(): Promise<void>;
-  stopDiscovery(): Promise<void>;
   startNearbyService(): Promise<void>;
   stopNearbyService(): Promise<void>;
   sendMessage(
@@ -35,7 +34,6 @@ declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
 
   // State functions
   isServiceRunning(): Promise<boolean>;
-  isDiscovering(): Promise<boolean>;
 
   // Notification subscription functions
   subscribeToNotifications(chatId: string): Promise<boolean>;
@@ -43,7 +41,7 @@ declare class MeshPeerModule extends NativeModule<MeshPeerModuleEvents> {
   getNotificationSubscriptions(): Promise<string[]>;
   isSubscribedToNotifications(chatId: string): Promise<boolean>;
   clearNotificationSubscriptions(): Promise<void>;
-  
+
   // Visiblity (is the app in the foreground or not?)
   setVisibility(foreground: Boolean): Promise<void>;
 }
@@ -59,7 +57,10 @@ try {
   nativeModule = requireNativeModule<MeshPeerModule>("MeshPeerModule");
 } catch (e) {
   // eslint-disable-next-line no-console
-  console.warn("MeshPeerModule native module not found, using JS fallback:", e?.message ?? e);
+  console.warn(
+    "MeshPeerModule native module not found, using JS fallback:",
+    e?.message ?? e,
+  );
 }
 
 // Fallback internal state used to emulate permissions and service state while
@@ -77,11 +78,25 @@ const jsFallback: any = {
     return true;
   },
   checkPermissions: async () => ({ granted: fallbackPermissionGranted }),
-  startDiscovery: async () => { fallbackDiscovering = true; },
-  stopDiscovery: async () => { fallbackDiscovering = false; },
-  startNearbyService: async () => { fallbackServiceRunning = true; },
-  stopNearbyService: async () => { fallbackServiceRunning = false; },
-  sendMessage: async (_id: string, _content: string, _userId: string, _createdAt: number, _chatId: string) => {},
+  startDiscovery: async () => {
+    fallbackDiscovering = true;
+  },
+  stopDiscovery: async () => {
+    fallbackDiscovering = false;
+  },
+  startNearbyService: async () => {
+    fallbackServiceRunning = true;
+  },
+  stopNearbyService: async () => {
+    fallbackServiceRunning = false;
+  },
+  sendMessage: async (
+    _id: string,
+    _content: string,
+    _userId: string,
+    _createdAt: number,
+    _chatId: string,
+  ) => {},
   getConnectedPeers: async () => [] as string[],
   disconnectFromPeer: async (_endpointId: string) => {},
   disconnectFromAllPeers: async () => {},
@@ -91,7 +106,9 @@ const jsFallback: any = {
   // running without the native module. This persists only for the JS runtime
   // session (lost on full reload), but is sufficient for local UI testing.
   getUsername: async () => fallbackStoredUsername as string | null,
-  setUsername: async (username: string) => { fallbackStoredUsername = username; },
+  setUsername: async (username: string) => {
+    fallbackStoredUsername = username;
+  },
   isServiceRunning: async () => fallbackServiceRunning,
   isDiscovering: async () => fallbackDiscovering,
   subscribeToNotifications: async (_chatId: string) => false,
@@ -100,7 +117,9 @@ const jsFallback: any = {
   isSubscribedToNotifications: async (_chatId: string) => false,
   clearNotificationSubscriptions: async () => {},
   // Minimal event listener stub used by JS code. Returns an object with remove().
-  addListener: (_eventName: string, _cb: (...args: any[]) => void) => ({ remove: () => {} }),
+  addListener: (_eventName: string, _cb: (...args: any[]) => void) => ({
+    remove: () => {},
+  }),
 };
 
 const exported: any = nativeModule ?? jsFallback;

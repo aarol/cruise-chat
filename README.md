@@ -24,6 +24,6 @@ CruiseChat aims to be a simple messaging app that works with peer-to-peer connec
 ## Problems
 
 - Username size is not limited
-- Message size is maybe not limited?
 - The number of synced messages is limited to ~30k bytes
 - Arabic characters username switch text from LTR to RTL
+- created_at time can be manipulated by changing phone system time

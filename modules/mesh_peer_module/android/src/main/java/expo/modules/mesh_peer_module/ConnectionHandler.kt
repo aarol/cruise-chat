@@ -4,7 +4,7 @@ import android.util.Log
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.*
 
-class ConnectionHandler {
+class ConnectionHandler(service: NearbyService) {
 
     private val TAG = "NearbyService"
     private val SERVICE_ID = "com.anonymous.cruisechat"
@@ -17,17 +17,15 @@ class ConnectionHandler {
         fun onConnectionFailed(endpointId: String, error: String)
 
         fun onPayloadReceived(endpointId: String, payload: Payload)
+
+        fun onStarterDiscovering()
+        fun onStoppedDiscovering()
     }
     
-    private var listener: ConnectionCallbacks? = null
-    fun setListener(listener: ConnectionCallbacks?) { this.listener = listener }
-    private lateinit var connectionsClient: ConnectionsClient
+    private var listener: ConnectionCallbacks = service
+    private var connectionsClient = Nearby.getConnectionsClient(service)
     private val connectedEndpoints = mutableSetOf<String>()
     private val strategy = Strategy.P2P_CLUSTER
-
-    fun Init(service: NearbyService) {
-        connectionsClient = Nearby.getConnectionsClient(service)
-    }
 
     fun startAdvertising(): Boolean {
         val advertisingOptions = AdvertisingOptions.Builder().setStrategy(strategy).build()
@@ -62,19 +60,17 @@ class ConnectionHandler {
         }
     }
     
-    fun stopAdvertising(): Boolean {
+    fun stopAdvertising() {
         Log.d(TAG, "stop advertising")
         connectionsClient.stopAdvertising()
-        return true
     }
     
-    fun stopDiscovery(): Boolean {
+    fun stopDiscovery() {
         Log.d(TAG, "stop discovery")
         connectionsClient.stopDiscovery()
-        return true
+        listener.onStoppedDiscovering()
     }
-    
-    
+
     fun sendPayload(endpointId: String, payload: Payload) {
         if (connectedEndpoints.contains(endpointId))
             connectionsClient.sendPayload(endpointId, payload)
@@ -125,28 +121,27 @@ class ConnectionHandler {
             when (result.status.statusCode) {
                 ConnectionsStatusCodes.STATUS_OK -> {
                     connectedEndpoints.add(endpointId)
-                    listener?.onPeerConnected(endpointId)
-                    
+                    listener.onPeerConnected(endpointId)
                 }
                 ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED -> {
-                    listener?.onConnectionFailed(endpointId, "Connection rejected")
+                    listener.onConnectionFailed(endpointId, "Connection rejected")
                 }
                 else -> {
-                    Log.d(TAG, "Connection made, but it errored.")
-                    listener?.onConnectionFailed(endpointId, "Connection failed with status: ${result.status.statusCode}")
+                    Log.d(TAG, "Connection made, but it errored with status: ${result.status.statusMessage}")
+                    listener.onConnectionFailed(endpointId, "Connection failed with status: ${result.status.statusMessage}")
                 }
             }
         }
 
         override fun onDisconnected(endpointId: String) {
             connectedEndpoints.remove(endpointId)
-            listener?.onPeerDisconnected(endpointId)
+            listener.onPeerDisconnected(endpointId)
         }
     }
 
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
-            listener?.onPayloadReceived(endpointId, payload)
+            listener.onPayloadReceived(endpointId, payload)
         }
 
         override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {
