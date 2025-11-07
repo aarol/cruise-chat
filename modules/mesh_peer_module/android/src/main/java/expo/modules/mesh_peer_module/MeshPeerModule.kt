@@ -139,7 +139,8 @@ class MeshPeerModule : Module(), NearbyService.NearbyServiceListener {
 
     OnCreate {
       val workRequest = OneTimeWorkRequestBuilder<ReminderNotificationWorker>()
-        .setInitialDelay(20_000, TimeUnit.MILLISECONDS)
+        .setInitialDelay(ReminderNotificationWorker.millisecondsUntilReminder(), TimeUnit.MILLISECONDS)
+        .addTag("onboard-reminder")
         .build()
 
       WorkManager.getInstance().enqueueUniqueWork(
