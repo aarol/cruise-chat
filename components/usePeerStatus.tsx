@@ -182,6 +182,8 @@ export const PeerStatusProvider: React.FC<PeerStatusProviderProps> = ({
           () => {
             setPeerStatus((prev) => ({
               ...prev,
+              connectedPeers: [],
+              discoveredPeers: [],
               isServiceRunning: true,
             }));
           },
@@ -192,6 +194,8 @@ export const PeerStatusProvider: React.FC<PeerStatusProviderProps> = ({
             console.log("service stopped event");
             setPeerStatus((prev) => ({
               ...prev,
+              connectedPeers: [],
+              discoveredPeers: [],
               isServiceRunning: false,
             }));
           },

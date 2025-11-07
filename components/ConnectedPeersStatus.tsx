@@ -5,6 +5,9 @@ import { Text } from "react-native-paper";
 export function ConnectedPeersStatus() {
   const { peerStatus } = usePeerStatus();
   const hasConnections = peerStatus.connectedPeers.length > 0;
+  const serviceRunning = peerStatus.isServiceRunning;
+
+  if (!serviceRunning) return <View />;
 
   return (
     <View style={{ margin: 10, flexDirection: "row", alignItems: "center" }}>
