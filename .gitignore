@@ -38,10 +38,20 @@ yarn-error.*
 
 # generated native folders
 /ios
-/android
+# Android: keep sources & Gradle scripts tracked; ignore only build outputs and local config
+android/app/build/
+android/app/.cxx/
+android/app/src/
+android/build/
+android/gradle/
+android/.gradle/
+android/gradlew.bat
+android/gradlew
+android/gradle.properties
 
 modules/*/android/build/
 local.properties
 
+*.keystore
 .gradle
 .idea
