@@ -84,6 +84,10 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         .setDescription("Events recorded by the background service")
         .build()
 
+    private val messageCounter = meter.upDownCounterBuilder("message_count")
+        .setDescription("How many messages the device knows about")
+        .build()
+
     inner class LocalBinder : Binder() {
         fun getService(): NearbyService = this@NearbyService
     }
@@ -270,7 +274,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     }
 
     override fun onConnectionFailed(endpointId: String, error: String) {
-        connectCounter.add(-1)
+        connectCounter.add(-1, attrs)
         listener?.onConnectionFailed(endpointId, error)
     }
 
@@ -366,6 +370,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             connectionHandler.sendPayloads(payload)
 
             Log.d(TAG, "✅ Message broadcast complete | ID: $messageId")
+            messageCounter.add(1, attrs)
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error broadcasting message: ${e.message}")
@@ -454,11 +459,12 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
             val cursor = db.rawQuery("SELECT COUNT(*) FROM messages", null)
             cursor.use {
-                return if (cursor.moveToFirst()) {
+                val res = if (cursor.moveToFirst()) {
                     cursor.getInt(0)
                 } else {
                     0
                 }
+                return res
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting message count: ${e.message}")
@@ -471,6 +477,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             val totalMessages = getMessageCount()
             listener?.onNewMessages(newMessageCount, totalMessages)
             Log.d(TAG, "Notified listener about $newMessageCount new messages (total: ${totalMessages})")
+            messageCounter.add(newMessageCount.toLong(), attrs)
         } catch (e: Exception) {
             Log.e(TAG, "Error notifying about new messages: ${e.message}")
         }

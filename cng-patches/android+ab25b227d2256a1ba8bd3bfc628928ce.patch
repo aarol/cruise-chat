@@ -1,5 +1,5 @@
 diff --git a/android/app/build.gradle b/android/app/build.gradle
-index 60d2123..d5cb39f 100644
+index 60d2123..e146315 100644
 --- a/android/app/build.gradle
 +++ b/android/app/build.gradle
 @@ -96,6 +96,9 @@ android {
@@ -36,33 +36,41 @@ index 60d2123..d5cb39f 100644
              def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
              shrinkResources enableShrinkResources.toBoolean()
              minifyEnabled enableMinifyInReleaseBuilds
-@@ -155,6 +166,10 @@ android {
- dependencies {
+@@ -156,6 +167,9 @@ dependencies {
      // The version of react-native is set by the React Native Gradle Plugin
      implementation("com.facebook.react:react-android")
-+    implementation("io.opentelemetry:opentelemetry-sdk:1.56.0")
-+    implementation("io.opentelemetry:opentelemetry-sdk-metrics:1.56.0")
-+    implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.56.0")
-+
  
++    api(platform("io.opentelemetry.android:opentelemetry-android-bom:0.16.0-alpha"))
++    implementation("io.opentelemetry.android:android-agent") // Version is resolved thru bom
++
      def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
      def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
+     def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
 diff --git a/android/app/src/main/java/com/raskitech/cruisechat/MainApplication.kt b/android/app/src/main/java/com/raskitech/cruisechat/MainApplication.kt
-index 6767f33..0ba7005 100644
+index 6767f33..4924758 100644
 --- a/android/app/src/main/java/com/raskitech/cruisechat/MainApplication.kt
 +++ b/android/app/src/main/java/com/raskitech/cruisechat/MainApplication.kt
-@@ -16,41 +16,73 @@ import com.facebook.react.defaults.DefaultReactNativeHost
+@@ -1,6 +1,7 @@
+ package com.raskitech.cruisechat
+ 
+ import android.app.Application
++import android.content.Context
+ import android.content.res.Configuration
+ 
+ import com.facebook.react.PackageList
+@@ -16,41 +17,81 @@ import com.facebook.react.defaults.DefaultReactNativeHost
  import expo.modules.ApplicationLifecycleDispatcher
  import expo.modules.ReactNativeHostWrapper
  
-+import io.opentelemetry.api.GlobalOpenTelemetry
-+import io.opentelemetry.sdk.OpenTelemetrySdk
-+import io.opentelemetry.sdk.metrics.SdkMeterProvider
-+import io.opentelemetry.exporter.otlp.http.metrics.OtlpHttpMetricExporter;
-+import io.opentelemetry.sdk.metrics.export.PeriodicMetricReader
 +import java.time.Duration
 +import java.util.concurrent.TimeUnit
-+import okhttp3.OkHttpClient
++import android.util.Log
++
++import io.opentelemetry.android.agent.OpenTelemetryRumInitializer
++import io.opentelemetry.android.OpenTelemetryRum
++import io.opentelemetry.api.common.Attributes
++import io.opentelemetry.api.common.AttributeKey.stringKey
++import io.opentelemetry.api.GlobalOpenTelemetry
 +
 +
  class MainApplication : Application(), ReactApplication {
@@ -85,46 +93,53 @@ index 6767f33..0ba7005 100644
 +                }
 +
 +            override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
-+
+ 
+-          override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
 +            override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
-+
+ 
+-          override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
 +            override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
 +        }
 +    )
  
--          override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
-+    override val reactHost: ReactHost
-+        get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
- 
--          override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
-+    override fun onCreate() {
-+        super.onCreate()
- 
 -          override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
 -      }
 -  )
-+        val endpoint = BuildConfig.GRAFANA_OTLP_ENDPOINT
-+        val apiKey = BuildConfig.GRAFANA_OTLP_API_KEY
++    override val reactHost: ReactHost
++        get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
  
 -  override val reactHost: ReactHost
 -    get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
-+        val exporter = OtlpHttpMetricExporter.builder()
-+            .setEndpoint(endpoint)
-+            .addHeader("Authorization", "Bearer $apiKey")
-+            .setTimeout(Duration.ofSeconds(10))
-+            .build()
++    override fun onCreate() {
++        super.onCreate()
 +
-+        val metricReader = PeriodicMetricReader.builder(exporter)
-+            .setInterval(10, TimeUnit.SECONDS)
-+            .build()
++        val endpoint = BuildConfig.GRAFANA_OTLP_ENDPOINT
++        val apiKey = BuildConfig.GRAFANA_OTLP_API_KEY
++        Log.d("MainApplication", "Initializing OpenTelemetry RUM with endpoint: $endpoint")
 +
-+        val meterProvider = SdkMeterProvider.builder()
-+            .registerMetricReader(metricReader)
-+            .build()
-+
-+        val sdk = OpenTelemetrySdk.builder()
-+            .setMeterProvider(meterProvider)
-+            .buildAndRegisterGlobal()
++        val rum = OpenTelemetryRumInitializer.initialize(
++            context = this@MainApplication,
++            configuration = {
++                httpExport {
++                    baseUrl = endpoint
++                    baseHeaders = mapOf(
++                        "Authorization" to "Bearer $apiKey"
++                    )
++                }
++                instrumentations {
++                    activity {
++                        enabled(false)
++                    }
++                    fragment {
++                        enabled(false)
++                    }
++                    slowRenderingReporter {
++                        enabled(false)
++                    }
++                }
++            }
++        )
++        GlobalOpenTelemetry.set(rum.getOpenTelemetry())
 +
 +        DefaultNewArchitectureEntryPoint.releaseLevel = try {
 +            ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
@@ -155,7 +170,7 @@ index 6767f33..0ba7005 100644
 -  }
  }
 diff --git a/android/gradle.properties b/android/gradle.properties
-index 8e39f82..9a87be3 100644
+index 8e39f82..c10a61e 100644
 --- a/android/gradle.properties
 +++ b/android/gradle.properties
 @@ -3,6 +3,10 @@
