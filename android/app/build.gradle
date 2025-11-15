@@ -96,6 +96,9 @@ android {
         versionName "1.0.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+        buildConfigField "String", "GRAFANA_OTLP_API_KEY", "\"${GRAFANA_OTLP_API_KEY ?: ""}\""
+        buildConfigField "String", "GRAFANA_OTLP_ENDPOINT", "\"${GRAFANA_OTLP_ENDPOINT ?: ""}\""
+
     }
     signingConfigs {
         debug {
@@ -163,6 +166,10 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    implementation("io.opentelemetry:opentelemetry-sdk:1.56.0")
+    implementation("io.opentelemetry:opentelemetry-sdk-metrics:1.56.0")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.56.0")
+
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";

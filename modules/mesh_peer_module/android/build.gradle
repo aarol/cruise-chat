@@ -48,4 +48,7 @@ dependencies {
   implementation 'androidx.sqlite:sqlite-framework:2.4.0'
   implementation 'com.google.android.gms:play-services-location:21.3.0'
   implementation 'androidx.work:work-runtime-ktx:2.9.0'
+  implementation("io.opentelemetry:opentelemetry-sdk:1.56.0")
+  implementation("io.opentelemetry:opentelemetry-sdk-metrics:1.56.0")
+  implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.56.0")
 }

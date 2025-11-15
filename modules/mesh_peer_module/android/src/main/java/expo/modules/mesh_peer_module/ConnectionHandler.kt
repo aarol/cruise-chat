@@ -9,7 +9,7 @@ class ConnectionHandler(service: NearbyService) {
     private val TAG = "NearbyService"
     private val SERVICE_ID = "com.raskitech.cruisechat"
 
-    private val currName = generateRandomString()
+    val currName = generateRandomString()
 
     interface ConnectionCallbacks {
         fun onPeerConnected(endpointId: String)

@@ -1,0 +1,166 @@
+diff --git a/android/app/build.gradle b/android/app/build.gradle
+index 60d2123..d5cb39f 100644
+--- a/android/app/build.gradle
++++ b/android/app/build.gradle
+@@ -96,6 +96,9 @@ android {
+         versionName "1.0.0"
+ 
+         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
++        buildConfigField "String", "GRAFANA_OTLP_API_KEY", "\"${GRAFANA_OTLP_API_KEY ?: ""}\""
++        buildConfigField "String", "GRAFANA_OTLP_ENDPOINT", "\"${GRAFANA_OTLP_ENDPOINT ?: ""}\""
++
+     }
+     signingConfigs {
+         debug {
+@@ -104,6 +107,14 @@ android {
+             keyAlias 'androiddebugkey'
+             keyPassword 'android'
+         }
++        release {
++            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
++                storeFile file(MYAPP_UPLOAD_STORE_FILE)
++                storePassword MYAPP_UPLOAD_STORE_PASSWORD
++                keyAlias MYAPP_UPLOAD_KEY_ALIAS
++                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
++            }
++        }
+     }
+     buildTypes {
+         debug {
+@@ -112,7 +123,7 @@ android {
+         release {
+             // Caution! In production, you need to generate your own keystore file.
+             // see https://reactnative.dev/docs/signed-apk-android.
+-            signingConfig signingConfigs.debug
++            signingConfig signingConfigs.release
+             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
+             shrinkResources enableShrinkResources.toBoolean()
+             minifyEnabled enableMinifyInReleaseBuilds
+@@ -155,6 +166,10 @@ android {
+ dependencies {
+     // The version of react-native is set by the React Native Gradle Plugin
+     implementation("com.facebook.react:react-android")
++    implementation("io.opentelemetry:opentelemetry-sdk:1.56.0")
++    implementation("io.opentelemetry:opentelemetry-sdk-metrics:1.56.0")
++    implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.56.0")
++
+ 
+     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
+     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
+diff --git a/android/app/src/main/java/com/raskitech/cruisechat/MainApplication.kt b/android/app/src/main/java/com/raskitech/cruisechat/MainApplication.kt
+index 6767f33..0ba7005 100644
+--- a/android/app/src/main/java/com/raskitech/cruisechat/MainApplication.kt
++++ b/android/app/src/main/java/com/raskitech/cruisechat/MainApplication.kt
+@@ -16,41 +16,73 @@ import com.facebook.react.defaults.DefaultReactNativeHost
+ import expo.modules.ApplicationLifecycleDispatcher
+ import expo.modules.ReactNativeHostWrapper
+ 
++import io.opentelemetry.api.GlobalOpenTelemetry
++import io.opentelemetry.sdk.OpenTelemetrySdk
++import io.opentelemetry.sdk.metrics.SdkMeterProvider
++import io.opentelemetry.exporter.otlp.http.metrics.OtlpHttpMetricExporter;
++import io.opentelemetry.sdk.metrics.export.PeriodicMetricReader
++import java.time.Duration
++import java.util.concurrent.TimeUnit
++import okhttp3.OkHttpClient
++
++
+ class MainApplication : Application(), ReactApplication {
+ 
+-  override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
+-      this,
+-      object : DefaultReactNativeHost(this) {
+-        override fun getPackages(): List<ReactPackage> =
+-            PackageList(this).packages.apply {
+-              // Packages that cannot be autolinked yet can be added manually here, for example:
+-              // add(MyReactNativePackage())
+-            }
++    override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
++        this,
++        object : DefaultReactNativeHost(this) {
++            override fun getPackages(): List<ReactPackage> =
++                PackageList(this).packages.apply {
++                    // Packages that cannot be autolinked yet can be added manually here, for example:
++                    // add(MyReactNativePackage())
++                }
++
++            override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
++
++            override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
++
++            override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
++        }
++    )
+ 
+-          override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
++    override val reactHost: ReactHost
++        get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
+ 
+-          override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
++    override fun onCreate() {
++        super.onCreate()
+ 
+-          override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
+-      }
+-  )
++        val endpoint = BuildConfig.GRAFANA_OTLP_ENDPOINT
++        val apiKey = BuildConfig.GRAFANA_OTLP_API_KEY
+ 
+-  override val reactHost: ReactHost
+-    get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
++        val exporter = OtlpHttpMetricExporter.builder()
++            .setEndpoint(endpoint)
++            .addHeader("Authorization", "Bearer $apiKey")
++            .setTimeout(Duration.ofSeconds(10))
++            .build()
++
++        val metricReader = PeriodicMetricReader.builder(exporter)
++            .setInterval(10, TimeUnit.SECONDS)
++            .build()
++
++        val meterProvider = SdkMeterProvider.builder()
++            .registerMetricReader(metricReader)
++            .build()
++
++        val sdk = OpenTelemetrySdk.builder()
++            .setMeterProvider(meterProvider)
++            .buildAndRegisterGlobal()
++
++        DefaultNewArchitectureEntryPoint.releaseLevel = try {
++            ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
++        } catch (e: IllegalArgumentException) {
++            ReleaseLevel.STABLE
++        }
++        loadReactNative(this)
++        ApplicationLifecycleDispatcher.onApplicationCreate(this)
++    }
+ 
+-  override fun onCreate() {
+-    super.onCreate()
+-    DefaultNewArchitectureEntryPoint.releaseLevel = try {
+-      ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
+-    } catch (e: IllegalArgumentException) {
+-      ReleaseLevel.STABLE
++    override fun onConfigurationChanged(newConfig: Configuration) {
++        super.onConfigurationChanged(newConfig)
++        ApplicationLifecycleDispatcher.onConfigurationChanged(this, newConfig)
+     }
+-    loadReactNative(this)
+-    ApplicationLifecycleDispatcher.onApplicationCreate(this)
+-  }
+-
+-  override fun onConfigurationChanged(newConfig: Configuration) {
+-    super.onConfigurationChanged(newConfig)
+-    ApplicationLifecycleDispatcher.onConfigurationChanged(this, newConfig)
+-  }
+ }
+diff --git a/android/gradle.properties b/android/gradle.properties
+index 8e39f82..9a87be3 100644
+--- a/android/gradle.properties
++++ b/android/gradle.properties
+@@ -3,6 +3,10 @@
+ # IDE (e.g. Android Studio) users:
+ # Gradle settings configured through the IDE *will override*
+ # any settings specified in this file. 
+ # For more details on how to configure your build environment visit
+ # http://www.gradle.org/docs/current/userguide/build_environment.html

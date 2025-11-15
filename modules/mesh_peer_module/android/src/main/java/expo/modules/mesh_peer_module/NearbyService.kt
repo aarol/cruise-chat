@@ -1,6 +1,5 @@
 package expo.modules.mesh_peer_module
 
-import android.app.Notification
 import android.app.PendingIntent
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -13,15 +12,16 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.*
 import java.nio.charset.StandardCharsets
 
 // SQLite imports
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
+import io.opentelemetry.api.GlobalOpenTelemetry
+import io.opentelemetry.api.common.Attributes
+import io.opentelemetry.api.metrics.Meter
 import java.io.File
-import java.util.UUID
 
 // JSON imports
 import org.json.JSONObject
@@ -74,6 +74,15 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     private var discoveryRunnable: Runnable? = null
     private var isPeriodicDiscoveryEnabled = false
 
+    private val meter: Meter by lazy {
+        GlobalOpenTelemetry.get().getMeter("com.raskitech.cruisechat")
+    }
+
+    private lateinit var attrs: Attributes
+
+    private val connectCounter = meter.upDownCounterBuilder("connected_devices")
+        .setDescription("Events recorded by the background service")
+        .build()
 
     inner class LocalBinder : Binder() {
         fun getService(): NearbyService = this@NearbyService
@@ -86,6 +95,11 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
         createNotificationChannel()
         connectionHandler = ConnectionHandler(this)
         connectionHandler.startAdvertising()
+        attrs = Attributes.builder()
+            .put("device_id", connectionHandler.currName)
+            .build()
+        connectCounter.add(0, attrs)
+
         startPeriodicDiscovery()
     }
 
@@ -154,7 +168,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
      */
     fun startDiscoveryImmediate() {
         Log.d(TAG, "Starting immediate discovery")
-         startPeriodicDiscovery()
+        startPeriodicDiscovery()
     }
 
     /**
@@ -246,14 +260,17 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
     override fun onPeerConnected(endpointId: String) {
         // Initiate message synchronization by sending our known message IDs
         initiateSyncWithPeer(endpointId)
+        connectCounter.add(1, attrs)
         listener?.onPeerConnected(endpointId)
     }
 
     override fun onPeerDisconnected(endpointId: String) {
+        connectCounter.add(-1, attrs)
         listener?.onPeerDisconnected(endpointId)
     }
 
     override fun onConnectionFailed(endpointId: String, error: String) {
+        connectCounter.add(-1)
         listener?.onConnectionFailed(endpointId, error)
     }
 
