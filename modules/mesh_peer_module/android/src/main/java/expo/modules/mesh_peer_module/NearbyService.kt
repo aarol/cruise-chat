@@ -26,6 +26,7 @@ import java.io.File
 // JSON imports
 import org.json.JSONObject
 import org.json.JSONArray
+import java.lang.NullPointerException
 
 class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
@@ -94,7 +95,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "NearbyService onCreate() called")
+
         initializeDatabase()
         createNotificationChannel()
         connectionHandler = ConnectionHandler(this)
@@ -103,6 +104,8 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             .put("device_id", connectionHandler.currName)
             .build()
         connectCounter.add(0, attrs)
+
+        Logger.info(TAG, "Started NearbyService")
 
         startPeriodicDiscovery()
     }
@@ -137,7 +140,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             Log.d(TAG, "Started foreground service with notification")
 
         } catch (e: Exception) {
-            Log.e(TAG, "Error starting foreground service: ${e.message}", e)
+            Logger.error(TAG, "Error starting foreground service", e)
         }
 
         return START_STICKY
@@ -228,7 +231,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             Log.d(TAG, "Subscribed to notifications for chat: $chatId (already subscribed: ${!added})")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Error subscribing to notifications for chat $chatId: ${e.message}")
+            Logger.error(TAG, "Error subscribing to notifications for chat $chatId", e)
             false
         }
     }
@@ -239,7 +242,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             Log.d(TAG, "Unsubscribed from notifications for chat: $chatId (was subscribed: $removed)")
             removed
         } catch (e: Exception) {
-            Log.e(TAG, "Error unsubscribing from notifications for chat $chatId: ${e.message}")
+            Logger.error(TAG, "Error unsubscribing from notifications for chat $chatId", e)
             false
         }
     }
@@ -321,10 +324,8 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             val dbPath = getDatabasePath()
             database = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READWRITE)
             Log.d(TAG, "Database connection established")
-        } catch (e: SQLiteException) {
-            Log.e(TAG, "Failed to initialize database: ${e.message}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error initializing database: ${e.message}")
+            Logger.error(TAG, "Failed to initialize database", e)
         }
     }
 
@@ -334,7 +335,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             database = null
             Log.d(TAG, "Database connection closed")
         } catch (e: Exception) {
-            Log.e(TAG, "Error closing database: ${e.message}")
+            Logger.error(TAG, "Error closing database", e)
         }
     }
 
@@ -373,7 +374,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             messageCounter.add(1, attrs)
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Error broadcasting message: ${e.message}")
+            Logger.error(TAG, "Error broadcasting message", e)
             false
         }
     }
@@ -413,11 +414,11 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             }
 
         } catch (e: SQLiteException) {
-            Log.e(TAG, "SQLite error getting message IDs: ${e.message}")
+            Logger.error(TAG, "SQLite error getting message IDs", e)
             // Try to recover by reinitializing database
             initializeDatabase()
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting message IDs: ${e.message}")
+            Logger.error(TAG, "Error getting message IDs", e)
         }
 
         return messageIds
@@ -440,11 +441,11 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             }
 
         } catch (e: SQLiteException) {
-            Log.e(TAG, "SQLite error getting message IDs: ${e.message}")
+            Logger.error(TAG, "SQLite error getting message IDs", e)
             // Try to recover by reinitializing database
             initializeDatabase()
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting message IDs: ${e.message}")
+            Logger.error(TAG, "Error getting message IDs", e)
         }
 
         return messageIds
@@ -467,7 +468,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 return res
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting message count: ${e.message}")
+            Logger.error(TAG, "Error getting message count", e)
             return 0
         }
     }
@@ -479,7 +480,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             Log.d(TAG, "Notified listener about $newMessageCount new messages (total: ${totalMessages})")
             messageCounter.add(newMessageCount.toLong(), attrs)
         } catch (e: Exception) {
-            Log.e(TAG, "Error notifying about new messages: ${e.message}")
+            Logger.error(TAG, "Error notifying about new messages", e)
         }
     }
 
@@ -492,7 +493,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 it.moveToFirst() && it.getInt(0) > 0
             } ?: false
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking if message exists: ${e.message}")
+            Logger.error(TAG, "Error checking if message exists", e)
             false
         }
     }
@@ -503,7 +504,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             connectionHandler.sendPayloads(payload)
             Log.d(TAG, "Broadcasted message to all peers")
         } catch (e: Exception) {
-            Log.e(TAG, "Error broadcasting message: ${e.message}")
+            Logger.error(TAG, "Error broadcasting message", e)
         }
     }
 
@@ -522,7 +523,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
             Log.d(TAG, "Sent sync request to $endpointId with ${knownMessageIds.size} known message IDs")
         } catch (e: Exception) {
-            Log.e(TAG, "Error initiating sync with peer $endpointId: ${e.message}")
+            Logger.error(TAG, "Error initiating sync with peer $endpointId", e)
         }
     }
 
@@ -552,7 +553,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
             Log.d(TAG, "Handled sync request from $endpointId: requesting ${missingMessageIds.size} messages")
         } catch (e: Exception) {
-            Log.e(TAG, "Error handling sync request from $endpointId: ${e.message}")
+            Logger.error(TAG, "Error handling sync request from $endpointId", e)
         }
     }
 
@@ -570,7 +571,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 sendMessageBatch(endpointId, idsToSend)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error handling sync response from $endpointId: ${e.message}")
+            Logger.error(TAG, "Error handling sync response from $endpointId", e)
         }
     }
 
@@ -643,7 +644,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
             Log.d(TAG, "Received message batch from $endpointId: stored $storedCount/${messages.length()} messages")
         } catch (e: Exception) {
-            Log.e(TAG, "Error handling message batch from $endpointId: ${e.message}")
+            Logger.error(TAG, "Error handling message batch from $endpointId", e)
         }
     }
 
@@ -677,7 +678,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
             Log.d(TAG, "Forwarded ${messages.size} messages to other peers as batch")
         } catch (e: Exception) {
-            Log.e(TAG, "Error broadcasting new messages to others: ${e.message}")
+            Logger.error(TAG, "Error broadcasting new messages to others", e)
         }
     }
 
@@ -692,7 +693,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting most recent message timestamp for chat $chatId: ${e.message}")
+            Logger.error(TAG, "Error getting most recent message timestamp for chat $chatId", e)
         }
         return 0L // Return 0 if no messages found or error occurred
     }
@@ -737,7 +738,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 Log.d(TAG, "Message ${message.id} already exists, skipping")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error handling chat message from $endpointId: ${e.message}")
+            Logger.error(TAG, "Error handling chat message from $endpointId", e)
         }
     }
 
@@ -754,7 +755,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
             Log.d(TAG, "Sent message batch to $endpointId with ${messages.size} messages")
         } catch (e: Exception) {
-            Log.e(TAG, "Error sending message batch to $endpointId: ${e.message}")
+            Logger.error(TAG, "Error sending message batch to $endpointId", e)
         }
     }
 
@@ -783,7 +784,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting messages by IDs: ${e.message}")
+            Logger.error(TAG, "Error getting messages by IDs", e)
         }
 
         return messages
@@ -818,10 +819,10 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
             return true
 
         } catch (e: SQLiteException) {
-            Log.e(TAG, "SQLite error storing synced message ${message.id}: ${e.message}")
+            Logger.error(TAG, "SQLite error storing synced message ${message.id}", e)
             return false
         } catch (e: Exception) {
-            Log.e(TAG, "Error storing synced message ${message.id}: ${e.message}")
+            Logger.error(TAG, "Error storing synced message ${message.id}", e)
             return false
         }
     }
@@ -861,7 +862,7 @@ class NearbyService : Service(), ConnectionHandler.ConnectionCallbacks {
 
             Log.d(TAG, "Notification shown for message from ${message.userId} in chat ${message.chatId}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error showing notification: ${e.message}")
+            Logger.error(TAG, "Error showing notification", e)
         }
     }
 

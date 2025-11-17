@@ -21,7 +21,7 @@ class ConnectionHandler(service: NearbyService) {
         fun onStarterDiscovering()
         fun onStoppedDiscovering()
     }
-    
+
     private var listener: ConnectionCallbacks = service
     private var connectionsClient = Nearby.getConnectionsClient(service)
     private val connectedEndpoints = mutableSetOf<String>()
@@ -39,11 +39,11 @@ class ConnectionHandler(service: NearbyService) {
             Log.d(TAG, "Starting advertising")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start advertising: ${e.message}")
+            Logger.error(TAG, "Failed to start advertising", e)
             false
         }
     }
-    
+
     fun startDiscovery(): Boolean {
         val discoveryOptions = DiscoveryOptions.Builder().setStrategy(strategy).build()
         return try {
@@ -55,16 +55,16 @@ class ConnectionHandler(service: NearbyService) {
             Log.d(TAG, "Starting discovery")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start discovery: ${e.message}")
+            Logger.error(TAG, "Failed to start discovery", e)
             false
         }
     }
-    
+
     fun stopAdvertising() {
         Log.d(TAG, "stop advertising")
         connectionsClient.stopAdvertising()
     }
-    
+
     fun stopDiscovery() {
         Log.d(TAG, "stop discovery")
         connectionsClient.stopDiscovery()
@@ -75,6 +75,7 @@ class ConnectionHandler(service: NearbyService) {
         if (connectedEndpoints.contains(endpointId))
             connectionsClient.sendPayload(endpointId, payload)
     }
+
     fun sendPayloads(payload: Payload) {
         connectedEndpoints.forEach { endpointId ->
             sendPayload(endpointId, payload)
@@ -82,12 +83,12 @@ class ConnectionHandler(service: NearbyService) {
     }
 
     fun getConnectedPeers(): List<String> = connectedEndpoints.toList()
-    
+
     fun disconnectFromPeer(endpointId: String) {
         connectionsClient.disconnectFromEndpoint(endpointId)
         connectedEndpoints.remove(endpointId)
     }
-    
+
     fun disconnectFromAllPeers() {
         connectionsClient.stopAllEndpoints()
         connectedEndpoints.clear()
@@ -95,18 +96,18 @@ class ConnectionHandler(service: NearbyService) {
 
     /**
      * Connection lifecycle callback that handles the message synchronization flow between peers.
-     * 
+     *
      * Message Sync Protocol Flow:
      * 1. When a connection is established (STATUS_OK), each peer sends a sync_request containing
      *    their list of known message IDs to the other peer
      * 2. Upon receiving a sync_request, each peer compares the received message IDs with their
-     *    local database and identifies missing messages  
+     *    local database and identifies missing messages
      * 3. Each peer sends a sync_response containing the IDs of messages they want to receive
      * 4. Upon receiving a sync_response, each peer sends a message_batch containing the full
      *    message data for all requested message IDs
      * 5. Received messages are stored in the local database and normal chat operation continues
      * 6. Regular chat_message types are handled as before for real-time messaging
-     * 
+     *
      * This ensures that when two devices connect, they automatically sync their message history
      * and both peers end up with a complete view of all messages exchanged in the mesh network.
      */
@@ -123,12 +124,17 @@ class ConnectionHandler(service: NearbyService) {
                     connectedEndpoints.add(endpointId)
                     listener.onPeerConnected(endpointId)
                 }
+
                 ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED -> {
                     listener.onConnectionFailed(endpointId, "Connection rejected")
                 }
+
                 else -> {
                     Log.d(TAG, "Connection made, but it errored with status: ${result.status.statusMessage}")
-                    listener.onConnectionFailed(endpointId, "Connection failed with status: ${result.status.statusMessage}")
+                    listener.onConnectionFailed(
+                        endpointId,
+                        "Connection failed with status: ${result.status.statusMessage}"
+                    )
                 }
             }
         }
