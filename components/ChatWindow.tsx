@@ -218,10 +218,7 @@ export default function ChatWindow({
                 contentStyle={styles.bigStartButtonContent}
                 labelStyle={styles.bigStartButtonText}
               >
-                <View>
-                  {isServiceRunning && <ActivityIndicator animating={true} />}
-                  <Text>I am on the cruise</Text>
-                </View>
+                <Text>I am on the cruise</Text>
               </Button>
             </Surface>
           ) : (
@@ -478,7 +475,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   bigStartButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
   },
   messagesContainer: {
