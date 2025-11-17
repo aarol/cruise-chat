@@ -1,18 +1,17 @@
 diff --git a/android/app/build.gradle b/android/app/build.gradle
-index 60d2123..e146315 100644
+index a529cc9..80dcb66 100644
 --- a/android/app/build.gradle
 +++ b/android/app/build.gradle
-@@ -96,6 +96,9 @@ android {
-         versionName "1.0.0"
+@@ -96,6 +96,8 @@ android {
+         versionName "1.1.0"
  
          buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 +        buildConfigField "String", "GRAFANA_OTLP_API_KEY", "\"${GRAFANA_OTLP_API_KEY ?: ""}\""
 +        buildConfigField "String", "GRAFANA_OTLP_ENDPOINT", "\"${GRAFANA_OTLP_ENDPOINT ?: ""}\""
-+
      }
      signingConfigs {
          debug {
-@@ -104,6 +107,14 @@ android {
+@@ -104,6 +106,14 @@ android {
              keyAlias 'androiddebugkey'
              keyPassword 'android'
          }
@@ -27,7 +26,7 @@ index 60d2123..e146315 100644
      }
      buildTypes {
          debug {
-@@ -112,7 +123,7 @@ android {
+@@ -112,7 +122,7 @@ android {
          release {
              // Caution! In production, you need to generate your own keystore file.
              // see https://reactnative.dev/docs/signed-apk-android.
@@ -36,7 +35,7 @@ index 60d2123..e146315 100644
              def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
              shrinkResources enableShrinkResources.toBoolean()
              minifyEnabled enableMinifyInReleaseBuilds
-@@ -156,6 +167,9 @@ dependencies {
+@@ -156,6 +166,9 @@ dependencies {
      // The version of react-native is set by the React Native Gradle Plugin
      implementation("com.facebook.react:react-android")
  
@@ -46,6 +45,7 @@ index 60d2123..e146315 100644
      def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
      def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
      def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
+
 diff --git a/android/app/src/main/java/com/raskitech/cruisechat/MainApplication.kt b/android/app/src/main/java/com/raskitech/cruisechat/MainApplication.kt
 index 6767f33..4924758 100644
 --- a/android/app/src/main/java/com/raskitech/cruisechat/MainApplication.kt
