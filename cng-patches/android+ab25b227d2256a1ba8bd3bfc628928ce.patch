@@ -169,13 +169,3 @@ index 6767f33..4924758 100644
 -    ApplicationLifecycleDispatcher.onConfigurationChanged(this, newConfig)
 -  }
  }
-diff --git a/android/gradle.properties b/android/gradle.properties
-index 8e39f82..c10a61e 100644
---- a/android/gradle.properties
-+++ b/android/gradle.properties
-@@ -3,6 +3,10 @@
- # IDE (e.g. Android Studio) users:
- # Gradle settings configured through the IDE *will override*
- # any settings specified in this file. 
- # For more details on how to configure your build environment visit
- # http://www.gradle.org/docs/current/userguide/build_environment.html
